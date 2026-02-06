@@ -79,6 +79,7 @@ export class FlashcardModal extends Modal {
             this.contentEl.createDiv(),
             this._showDecksList.bind(this),
             this._doEditQuestionText.bind(this),
+            this.close.bind(this),
         );
     }
 

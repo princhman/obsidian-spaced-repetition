@@ -85,6 +85,7 @@ export class CardUI {
     private reviewMode: FlashcardReviewMode;
     private backToDeck: () => void;
     private editClickHandler: () => void;
+    private closeHandler: () => void;
 
     constructor(
         app: App,
@@ -95,6 +96,7 @@ export class CardUI {
         view: HTMLDivElement,
         backToDeck: () => void,
         editClickHandler: () => void,
+        closeHandler: () => void,
     ) {
         // Init properties
         this.app = app;
@@ -104,6 +106,7 @@ export class CardUI {
         this.reviewMode = reviewMode;
         this.backToDeck = backToDeck;
         this.editClickHandler = editClickHandler;
+        this.closeHandler = closeHandler;
         this.view = view;
         this.chosenDeck = null;
 
@@ -398,16 +401,22 @@ export class CardUI {
         this.currentDeckCardCounterIcon.addClass("sr-current-deck-card-counter-icon");
         setIcon(this.currentDeckCardCounterIcon, "credit-card");
 
+        const contextWrapper = this.infoSection.createDiv();
+        contextWrapper.addClass("sr-context-wrapper");
+
         if (this.settings.showContextInCards) {
-            this.cardContext = this.infoSection.createDiv();
+            this.cardContext = contextWrapper.createSpan();
             this.cardContext.addClass("sr-context");
         }
 
-        this.sourceNoteLink = this.infoSection.createDiv();
-        this.sourceNoteLink.addClass("sr-source-note");
+        this.sourceNoteLink = contextWrapper.createSpan();
+        this.sourceNoteLink.addClass("sr-source-note-link");
+        setIcon(this.sourceNoteLink, "external-link");
+        this.sourceNoteLink.setAttribute("aria-label", "Open source note");
         this.sourceNoteLink.addEventListener("click", async () => {
             const note = this._currentNote;
             if (note?.file) {
+                this.closeHandler();
                 await this.app.workspace.openLinkText(note.filePath, "");
             }
         });
@@ -417,7 +426,6 @@ export class CardUI {
         this._updateChosenDeckInfo(chosenDeck);
         this._updateCurrentDeckInfo(chosenDeck, currentDeck);
         this._updateCardContext();
-        this._updateSourceNoteLink();
     }
 
     private _updateChosenDeckInfo(chosenDeck: Deck) {
@@ -476,11 +484,6 @@ export class CardUI {
         this.cardContext.setText(
             ` ${this._formatQuestionContextText(this._currentQuestion.questionContext)}`,
         );
-    }
-
-    private _updateSourceNoteLink() {
-        if (!this.sourceNoteLink) return;
-        this.sourceNoteLink.setText(this._currentNote.filePath);
     }
 
     private _formatQuestionContextText(questionContext: string[]): string {

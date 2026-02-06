@@ -460,24 +460,32 @@ body:not(.native-scrollbars) #sr-modal .modal-close-button {
     --icon-stroke: 2.5px;
 }
 
+.sr-flashcard .sr-context-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .sr-flashcard .sr-context {
     font-style: italic;
     color: var(--text-faint);
-    display: block;
 }
 
-.sr-flashcard .sr-source-note {
-    font-size: var(--font-ui-smaller);
-    color: var(--text-faint);
+.sr-flashcard .sr-source-note-link {
+    display: flex;
+    align-items: center;
     cursor: pointer;
-    text-decoration: underline;
-    text-decoration-style: dotted;
-    text-wrap: wrap;
-    word-break: break-word;
+    color: var(--text-faint);
+    flex-shrink: 0;
 }
 
-.sr-flashcard .sr-source-note:hover {
+.sr-flashcard .sr-source-note-link:hover {
     color: var(--text-muted);
+}
+
+.sr-flashcard .sr-source-note-link svg {
+    --icon-size: 14px;
+    --icon-stroke: 2px;
 }
 
 .sr-flashcard .sr-content {
