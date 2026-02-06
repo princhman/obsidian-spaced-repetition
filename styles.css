@@ -466,6 +466,20 @@ body:not(.native-scrollbars) #sr-modal .modal-close-button {
     display: block;
 }
 
+.sr-flashcard .sr-source-note {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-wrap: wrap;
+    word-break: break-word;
+}
+
+.sr-flashcard .sr-source-note:hover {
+    color: var(--text-muted);
+}
+
 .sr-flashcard .sr-content {
     font-size: var(--font-text-size);
     overflow-y: auto;

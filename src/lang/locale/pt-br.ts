@@ -22,6 +22,7 @@ export default {
     CURRENT_EASE_HELP_TEXT: "Facilidade atual: ",
     CURRENT_INTERVAL_HELP_TEXT: "Intervalo atual: ",
     CARD_GENERATED_FROM: "Gerada a partir de: ${notePath}",
+    NOT_A_FLASHCARD: "Not a flashcard",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "Abrir uma nota para revisar",

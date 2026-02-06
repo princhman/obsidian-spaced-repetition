@@ -54,6 +54,7 @@ export class CardUI {
     public currentDeckCardCounterIcon: HTMLDivElement;
 
     public cardContext: HTMLElement;
+    public sourceNoteLink: HTMLElement;
 
     public content: HTMLDivElement;
 
@@ -62,6 +63,7 @@ export class CardUI {
     public resetButton: HTMLButtonElement;
     public infoButton: HTMLButtonElement;
     public skipButton: HTMLButtonElement;
+    public disableButton: HTMLButtonElement;
 
     public response: HTMLDivElement;
     public hardButton: HTMLButtonElement;
@@ -256,6 +258,7 @@ export class CardUI {
         this._createEditButton();
         this._createResetButton();
         this._createCardInfoButton();
+        this._createDisableButton();
         this._createSkipButton();
     }
 
@@ -299,8 +302,23 @@ export class CardUI {
         });
     }
 
+    private _createDisableButton() {
+        this.disableButton = this.controls.createEl("button");
+        this.disableButton.addClasses(["sr-button", "sr-disable-button"]);
+        setIcon(this.disableButton, "x-circle");
+        this.disableButton.setAttribute("aria-label", t("NOT_A_FLASHCARD"));
+        this.disableButton.addEventListener("click", () => {
+            this._disableCurrentCard();
+        });
+    }
+
     private async _skipCurrentCard(): Promise<void> {
         this.reviewSequencer.skipCurrentCard();
+        await this._showNextCard();
+    }
+
+    private async _disableCurrentCard(): Promise<void> {
+        await this.reviewSequencer.disableCurrentCard();
         await this._showNextCard();
     }
 
@@ -384,12 +402,22 @@ export class CardUI {
             this.cardContext = this.infoSection.createDiv();
             this.cardContext.addClass("sr-context");
         }
+
+        this.sourceNoteLink = this.infoSection.createDiv();
+        this.sourceNoteLink.addClass("sr-source-note");
+        this.sourceNoteLink.addEventListener("click", async () => {
+            const note = this._currentNote;
+            if (note?.file) {
+                await this.app.workspace.openLinkText(note.filePath, "");
+            }
+        });
     }
 
     private _updateInfoBar(chosenDeck: Deck, currentDeck: Deck) {
         this._updateChosenDeckInfo(chosenDeck);
         this._updateCurrentDeckInfo(chosenDeck, currentDeck);
         this._updateCardContext();
+        this._updateSourceNoteLink();
     }
 
     private _updateChosenDeckInfo(chosenDeck: Deck) {
@@ -448,6 +476,11 @@ export class CardUI {
         this.cardContext.setText(
             ` ${this._formatQuestionContextText(this._currentQuestion.questionContext)}`,
         );
+    }
+
+    private _updateSourceNoteLink() {
+        if (!this.sourceNoteLink) return;
+        this.sourceNoteLink.setText(this._currentNote.filePath);
     }
 
     private _formatQuestionContextText(questionContext: string[]): string {

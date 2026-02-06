@@ -27,6 +27,7 @@ export interface IFlashcardReviewSequencer {
     getDeckStats(topicPath: TopicPath): DeckStats;
     getSubDecksWithCardsInQueue(deck: Deck): Deck[];
     skipCurrentCard(): void;
+    disableCurrentCard(): Promise<void>;
     determineCardSchedule(response: ReviewResponse, card: Card): RepItemScheduleInfo;
     processReview(response: ReviewResponse): Promise<void>;
     updateCurrentQuestionText(text: string): Promise<void>;
@@ -220,6 +221,15 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     }
 
     skipCurrentCard(): void {
+        this.cardSequencer.deleteCurrentQuestionFromAllDecks();
+    }
+
+    async disableCurrentCard(): Promise<void> {
+        // Add the edit-later tag to the question text so it won't appear in future reviews
+        const currentText = this.currentQuestion.questionText.actualQuestion;
+        await this.updateCurrentQuestionText(currentText + " " + this.settings.editLaterTag);
+
+        // Remove the card from the current review session
         this.cardSequencer.deleteCurrentQuestionFromAllDecks();
     }
 

@@ -21,6 +21,7 @@ export default {
     CURRENT_EASE_HELP_TEXT: "Current Ease: ",
     CURRENT_INTERVAL_HELP_TEXT: "Current Interval: ",
     CARD_GENERATED_FROM: "Generated from: ${notePath}",
+    NOT_A_FLASHCARD: "Not a flashcard",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "리뷰할 노트 열기",
