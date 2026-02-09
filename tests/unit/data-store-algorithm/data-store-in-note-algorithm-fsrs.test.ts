@@ -425,9 +425,7 @@ describe("questionFormatScheduleAsHtmlComment", () => {
 
         const result = instance.questionFormatScheduleAsHtmlComment(question);
 
-        expect(result).toEqual(
-            "<!--SR-FSRS:!2023-09-10,5.50,3.20,2,4,10,3,1,0,2023-09-06-->",
-        );
+        expect(result).toEqual("<!--SR-FSRS:!2023-09-10,5.50,3.20,2,4,10,3,1,0,2023-09-06-->");
     });
 
     test("Formats single card without schedule (new card)", () => {
@@ -439,9 +437,7 @@ describe("questionFormatScheduleAsHtmlComment", () => {
 
         const result = instance.questionFormatScheduleAsHtmlComment(question);
 
-        expect(result).toEqual(
-            "<!--SR-FSRS:!2000-01-01,0.00,0.00,0,0,0,0,0,0,2000-01-01-->",
-        );
+        expect(result).toEqual("<!--SR-FSRS:!2000-01-01,0.00,0.00,0,0,0,0,0,0,2000-01-01-->");
     });
 
     test("Formats multiple cards with mixed schedules", () => {

@@ -128,18 +128,7 @@ describe("constructor", () => {
     });
 
     test("Handles null dueDate", () => {
-        const info = new RepItemScheduleInfoFsrs(
-            null,
-            0,
-            0,
-            State.New,
-            0,
-            0,
-            0,
-            0,
-            0,
-            null,
-        );
+        const info = new RepItemScheduleInfoFsrs(null, 0, 0, State.New, 0, 0, 0, 0, 0, null);
 
         expect(info.dueDate).toBeNull();
         expect(info.interval).toEqual(0);
@@ -224,18 +213,7 @@ describe("formatCardScheduleForHtmlComment", () => {
     });
 
     test("Formats with dummy date when dueDate is null", () => {
-        const info = new RepItemScheduleInfoFsrs(
-            null,
-            0,
-            0,
-            State.New,
-            0,
-            0,
-            0,
-            0,
-            0,
-            null,
-        );
+        const info = new RepItemScheduleInfoFsrs(null, 0, 0, State.New, 0, 0, 0, 0, 0, null);
 
         expect(info.formatCardScheduleForHtmlComment()).toEqual(
             "!2000-01-01,0.00,0.00,0,0,0,0,0,0,2000-01-01",

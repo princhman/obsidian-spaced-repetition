@@ -1,8 +1,8 @@
 import moment from "moment";
 import { State } from "ts-fsrs";
 
-import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
+import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
 import { RepItemScheduleInfoFsrs } from "src/algorithms/fsrs/rep-item-schedule-info-fsrs";
 import { SrsAlgorithmFsrs } from "src/algorithms/fsrs/srs-algorithm-fsrs";
 import { DataStoreAlgorithm } from "src/data-store-algorithm/data-store-algorithm";
@@ -13,9 +13,7 @@ import { DueDateHistogram } from "src/due-date-histogram";
 import { DEFAULT_SETTINGS, SRSettings } from "src/settings";
 import { setupStaticDateProvider20230906 } from "src/utils/dates";
 
-function setupFsrsAlgorithm(
-    settings: SRSettings = { ...DEFAULT_SETTINGS, algorithm: "FSRS" },
-) {
+function setupFsrsAlgorithm(settings: SRSettings = { ...DEFAULT_SETTINGS, algorithm: "FSRS" }) {
     DataStore.instance = new StoreInNotes(settings);
     SrsAlgorithm.instance = new SrsAlgorithmFsrs(settings);
     DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmFsrs(settings);
@@ -64,8 +62,8 @@ describe("constructor", () => {
 
     test("Creates FSRS instance with custom weights", () => {
         const customWeights = [
-            0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34,
-            1.26, 0.29, 2.61,
+            0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26,
+            0.29, 2.61,
         ];
         const settings: SRSettings = {
             ...DEFAULT_SETTINGS,
@@ -524,11 +522,7 @@ describe("ReviewResponse to FSRS Rating mapping", () => {
         ];
 
         for (const response of responses) {
-            const result = alg.cardGetNewSchedule(
-                response,
-                "test/note.md",
-                new DueDateHistogram(),
-            );
+            const result = alg.cardGetNewSchedule(response, "test/note.md", new DueDateHistogram());
 
             expect(result).toBeInstanceOf(RepItemScheduleInfoFsrs);
             expect((result as RepItemScheduleInfoFsrs).stability).toBeGreaterThanOrEqual(0);
