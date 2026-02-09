@@ -388,6 +388,17 @@ body:not(.native-scrollbars) #sr-modal .modal-close-button {
     color: #ffffff !important;
 }
 
+/* Note nodes within leaf decks */
+.sr-deck-list .sr-note-node {
+    cursor: default;
+    opacity: 0.85;
+}
+
+.sr-deck-list .sr-note-name {
+    font-style: italic;
+    font-size: 0.9em;
+}
+
 /* MARK: FlashcardReviewView */
 
 .sr-flashcard .sr-button:disabled {

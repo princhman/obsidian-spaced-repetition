@@ -167,6 +167,8 @@ export default {
         "Deste ağaçları başlangıçta genişletilmiş olarak gösterilmeli mi",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Bunu kapatın, aynı dosyada birçok desteye ait kartlarınız varsa iç içe desteleri daraltmak için kullanışlıdır.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritma",
     CHECK_ALGORITHM_WIKI:
         'Daha fazla bilgi için <a href="${algoUrl}">algoritma uygulamasına</a> göz atın.',

@@ -641,6 +641,19 @@ export class SRSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.data.settings.initiallyExpandAllSubdecksInTree)
                     .onChange(async (value) => {
                         this.plugin.data.settings.initiallyExpandAllSubdecksInTree = value;
+                        this.plugin.data.deckCollapseState = {};
+                        await this.plugin.savePluginData();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName(t("SHOW_NOTES_IN_DECK_TREE"))
+            .setDesc(t("SHOW_NOTES_IN_DECK_TREE_DESC"))
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.data.settings.showNotesInDeckTree)
+                    .onChange(async (value) => {
+                        this.plugin.data.settings.showNotesInDeckTree = value;
                         await this.plugin.savePluginData();
                     }),
             );

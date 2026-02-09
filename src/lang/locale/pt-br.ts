@@ -170,6 +170,8 @@ export default {
         "Árvores de baralhos devem inicialmente ser exibidas como expandidas",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Desabilite isso para colapsar baralhos que estão um dentro do outro na mesma carta. Útil se você tem cartas que pertencem a muitos baralhos em um mesmo arquivo.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algorítmo",
     CHECK_ALGORITHM_WIKI:
         'Para mais informações, cheque a <a href="${algoUrl}">implementação do algorítmo</a>.',

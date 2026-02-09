@@ -169,6 +169,8 @@ export default {
         "Les dossiers de paquets devraient initialement tous être ouverts",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Désactivez pour réduire les paquets dans la même carte. Ce réglage est utile si vous avez des cartes qui appartiennent à beaucoup de paquets à la fois.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algorithme",
     CHECK_ALGORITHM_WIKI:
         "Pour en savoir plus, lisez l'<a href=\"${algoUrl}\">implémentation de l'algorithme</a>.",

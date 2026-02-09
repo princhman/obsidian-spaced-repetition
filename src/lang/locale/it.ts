@@ -173,6 +173,8 @@ export default {
         "Alberti di mazzi dovrebbero essere inizialmente visualizzate come espansi",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Disabilitami per collassare mazzi annidati nella stessa scheda. Utile se hai schede che appartengono a più mazzi nello stesso file.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritmo",
     CHECK_ALGORITHM_WIKI:
         "Per maggiori informazioni, visita <a href='${algoUrl}'>l'implementazione dell'algoritmo</a>.",

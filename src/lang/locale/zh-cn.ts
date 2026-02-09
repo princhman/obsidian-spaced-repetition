@@ -153,6 +153,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "默认在列表中展开嵌套子牌组",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "关闭此选项可折叠同一张卡片中的嵌套牌组。如果您的卡片属于同一文件中的许多套牌，则很有用。",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "算法",
     CHECK_ALGORITHM_WIKI: '了解更多, 请点击<a href="${algoUrl}">算法实现</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",

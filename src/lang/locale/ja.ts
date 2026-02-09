@@ -169,6 +169,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "デッキ ツリーは最初は展開して表示する必要があります",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "これをオフにすると、同じカード内のネストされたデッキが折りたたまれます。同じファイルに多くのデッキに属するカードがある場合に便利です。",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "アルゴリズム",
     CHECK_ALGORITHM_WIKI:
         '詳細については<a href="${algoUrl}">アルゴリズムの実装</a>を確認してください。',

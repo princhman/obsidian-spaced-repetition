@@ -37,6 +37,7 @@ export interface SRSettings {
     showRibbonIcon: boolean;
     showStatusBar: boolean;
     initiallyExpandAllSubdecksInTree: boolean;
+    showNotesInDeckTree: boolean;
     showContextInCards: boolean;
     showIntervalInReviewButtons: boolean;
     flashcardHeightPercentage: number;
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: SRSettings = {
     showRibbonIcon: true,
     showStatusBar: true,
     initiallyExpandAllSubdecksInTree: false,
+    showNotesInDeckTree: false,
     showContextInCards: true,
     showIntervalInReviewButtons: true,
     flashcardHeightPercentage: Platform.isMobile ? 100 : 80,

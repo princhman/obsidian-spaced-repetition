@@ -162,6 +162,8 @@ export default {
         "يجب أن يكون العرض الشجري للرُزم موسع بحيث تطهر الملفات الفرعية كلها",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         " عطل هذا الخيار لطي الرُزم المتداخلة في نفس البطاقة , مفيد إذا كان لديك بطاقات تنتمي إلى العديد من الرُزم في نفس الملف",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "خوارزمية",
     CHECK_ALGORITHM_WIKI: '<a href="${algoUrl}">algorithm details</a> :لمزيد من المعلومات تحقق من',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",

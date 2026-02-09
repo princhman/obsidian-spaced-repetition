@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import h from "vhtml";
 
+import { Card } from "src/card";
 import { COLLAPSE_ICON } from "src/constants";
 import { Deck } from "src/deck";
 import {
@@ -12,6 +13,14 @@ import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
 import { SRSettings } from "src/settings";
 import { TopicPath } from "src/topic-path";
+
+interface NoteGroupInfo {
+    basename: string;
+    path: string;
+    dueCount: number;
+    newCount: number;
+    totalCount: number;
+}
 
 export class DeckUI {
     public plugin: SRPlugin;
@@ -27,14 +36,14 @@ export class DeckUI {
 
     private reviewSequencer: IFlashcardReviewSequencer;
     private settings: SRSettings;
-    private startReviewOfDeck: (deck: Deck) => void;
+    private startReviewOfDeck: (deck: Deck, noteFilePath?: string) => void;
 
     constructor(
         plugin: SRPlugin,
         settings: SRSettings,
         reviewSequencer: IFlashcardReviewSequencer,
         view: HTMLDivElement,
-        startReviewOfDeck: (deck: Deck) => void,
+        startReviewOfDeck: (deck: Deck, noteFilePath?: string) => void,
     ) {
         // Init properties
         this.plugin = plugin;
@@ -145,10 +154,27 @@ export class DeckUI {
             "tree-item-self tag-pane-tag is-clickable sr-tree-item-row",
         );
 
-        const shouldBeInitiallyExpanded: boolean = this.settings.initiallyExpandAllSubdecksInTree;
-        let collapsed = !shouldBeInitiallyExpanded;
+        // Determine collapse state: check persisted state first, then fall back to setting
+        const deckPath = deck.getTopicPath().path.join("/");
+        const persistedState = this.plugin.data.deckCollapseState[deckPath];
+        let collapsed: boolean;
+        if (persistedState !== undefined) {
+            collapsed = persistedState;
+        } else {
+            collapsed = !this.settings.initiallyExpandAllSubdecksInTree;
+        }
+
+        // Pre-compute note groups for leaf decks when the setting is enabled
+        const topicPath = deck.getTopicPath();
+        const noteGroups: Map<string, NoteGroupInfo> | null =
+            deck.subdecks.length === 0 && this.settings.showNotesInDeckTree
+                ? this._groupCardsByNote(topicPath)
+                : null;
+        const showNoteNodes = noteGroups !== null && noteGroups.size > 1;
+        const hasExpandableChildren = deck.subdecks.length > 0 || showNoteNodes;
+
         let collapseIconEl: HTMLElement | null = null;
-        if (deck.subdecks.length > 0) {
+        if (hasExpandableChildren) {
             collapseIconEl = deckTreeSelf.createDiv("tree-item-icon collapse-icon");
             collapseIconEl.innerHTML = COLLAPSE_ICON;
             (collapseIconEl.childNodes[0] as HTMLElement).style.transform = collapsed
@@ -163,12 +189,12 @@ export class DeckUI {
         const deckTreeOuter: HTMLDivElement = deckTreeSelf.createDiv();
         deckTreeOuter.addClasses(["tree-item-flair-outer", "sr-tree-stats-container"]);
 
-        const deckStats = this.reviewSequencer.getDeckStats(deck.getTopicPath());
+        const deckStats = this.reviewSequencer.getDeckStats(topicPath);
         this._createStats(deckStats, deckTreeOuter);
 
         const deckTreeChildren: HTMLElement = deckTree.createDiv("tree-item-children");
         deckTreeChildren.style.display = collapsed ? "none" : "block";
-        if (deck.subdecks.length > 0) {
+        if (hasExpandableChildren) {
             collapseIconEl.addEventListener("click", (e) => {
                 if (collapsed) {
                     (collapseIconEl.childNodes[0] as HTMLElement).style.transform = "";
@@ -183,6 +209,10 @@ export class DeckUI {
                 // if the user clicks on the collapse icon
                 e.stopPropagation();
                 collapsed = !collapsed;
+
+                // Persist collapse state
+                this.plugin.data.deckCollapseState[deckPath] = collapsed;
+                this.plugin.savePluginData();
             });
         }
 
@@ -196,6 +226,86 @@ export class DeckUI {
         for (const subdeck of deck.subdecks) {
             this._createTree(subdeck, deckTreeChildren);
         }
+
+        // Render note groupings for leaf decks, sorted alphabetically
+        if (showNoteNodes) {
+            const sortedNotes = [...noteGroups.values()].sort((a, b) =>
+                a.basename.localeCompare(b.basename),
+            );
+            for (const noteInfo of sortedNotes) {
+                this._createNoteNode(noteInfo, deckTreeChildren, deck);
+            }
+        }
+    }
+
+    private _groupCardsByNote(topicPath: TopicPath): Map<string, NoteGroupInfo> {
+        const groups = new Map<string, NoteGroupInfo>();
+
+        const ensureGroup = (card: Card): NoteGroupInfo => {
+            const notePath = card.question.note.file.path;
+            if (!groups.has(notePath)) {
+                groups.set(notePath, {
+                    basename: card.question.note.file.basename,
+                    path: notePath,
+                    dueCount: 0,
+                    newCount: 0,
+                    totalCount: 0,
+                });
+            }
+            return groups.get(notePath)!;
+        };
+
+        // Use Sets to deduplicate (same card can appear in multiple decks)
+        const originalDeck = this.reviewSequencer.originalDeckTree.getDeck(topicPath);
+        const allOriginalCards = new Set([
+            ...originalDeck.dueFlashcards,
+            ...originalDeck.newFlashcards,
+        ]);
+        for (const card of allOriginalCards) {
+            ensureGroup(card).totalCount++;
+        }
+
+        const remainingDeck = this.reviewSequencer.remainingDeckTree.getDeck(topicPath);
+        const remainingDue = new Set(remainingDeck.dueFlashcards);
+        for (const card of remainingDue) {
+            ensureGroup(card).dueCount++;
+        }
+        const remainingNew = new Set(remainingDeck.newFlashcards);
+        for (const card of remainingNew) {
+            ensureGroup(card).newCount++;
+        }
+
+        return groups;
+    }
+
+    private _createNoteNode(noteInfo: NoteGroupInfo, container: HTMLElement, deck: Deck): void {
+        const noteTree: HTMLElement = container.createDiv("tree-item sr-tree-item-container");
+        const noteTreeSelf: HTMLElement = noteTree.createDiv(
+            "tree-item-self tag-pane-tag is-clickable sr-tree-item-row sr-note-node",
+        );
+
+        // Clicking a note node starts review filtered to that note's cards
+        noteTreeSelf.addEventListener("click", () => {
+            this.startReviewOfDeck(deck, noteInfo.path);
+        });
+
+        const noteTreeInner: HTMLElement = noteTreeSelf.createDiv("tree-item-inner");
+        const noteTreeInnerText: HTMLElement = noteTreeInner.createDiv("tag-pane-tag-text");
+        noteTreeInnerText.innerHTML += (
+            <span class="tag-pane-tag-self sr-note-name">{noteInfo.basename}</span>
+        );
+
+        const noteTreeOuter: HTMLDivElement = noteTreeSelf.createDiv();
+        noteTreeOuter.addClasses(["tree-item-flair-outer", "sr-tree-stats-container"]);
+
+        this._createStatsContainer(t("DUE_CARDS"), noteInfo.dueCount, "sr-bg-green", noteTreeOuter);
+        this._createStatsContainer(t("NEW_CARDS"), noteInfo.newCount, "sr-bg-blue", noteTreeOuter);
+        this._createStatsContainer(
+            t("TOTAL_CARDS"),
+            noteInfo.totalCount,
+            "sr-bg-red",
+            noteTreeOuter,
+        );
     }
 
     private _createStats(statistics: DeckStats, statsWrapper: HTMLDivElement) {

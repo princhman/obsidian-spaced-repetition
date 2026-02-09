@@ -164,6 +164,9 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Deck trees should be initially displayed as expanded",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Turn this off to collapse nested decks in the same card. Useful if you have cards which belong to many decks in the same file.",
+    SHOW_NOTES_IN_DECK_TREE: "Show source notes in deck tree",
+    SHOW_NOTES_IN_DECK_TREE_DESC:
+        "When enabled, leaf decks show their cards grouped by source note.",
     ALGORITHM: "Algorithm",
     CHECK_ALGORITHM_WIKI:
         'For more information, check the <a href="${algoUrl}">algorithm details</a>.',

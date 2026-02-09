@@ -182,6 +182,8 @@ export default {
         "Stapelverzeichnis soll beim öffnen erweitert angezeigt werden",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Deaktivieren Sie dies, um verschachtelte Stapel in derselben Karte zu reduzieren. Nützlich, wenn Sie Karten haben, die zu vielen Stapeln in derselben Datei gehören.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algorithmus",
     CHECK_ALGORITHM_WIKI:
         'Weiterführende Informationen: <a href="${algoUrl}">Implementierung des Algorithmus</a> (english).',

@@ -175,6 +175,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Stapelstructuren: Vouw substapels aanvankelijk uit",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Schakel dit uit om geneste stapels in dezelfde kaart samen te vouwen. Handig als je kaarten hebt die tot meerdere stapels in hetzelfde bestand behoren.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritme",
     CHECK_ALGORITHM_WIKI:
         'Voor meer informatie, bekijk de <a href="${algoUrl}">algoritmedetails</a>.',

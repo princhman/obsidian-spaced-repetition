@@ -21,9 +21,11 @@ export interface IFlashcardReviewSequencer {
     get currentNote(): Note;
     get currentDeck(): Deck;
     get originalDeckTree(): Deck;
+    get remainingDeckTree(): Deck;
 
     setDeckTree(originalDeckTree: Deck, remainingDeckTree: Deck): void;
     setCurrentDeck(topicPath: TopicPath): void;
+    setCurrentDeckFilteredByNote(topicPath: TopicPath, noteFilePath: string): void;
     getDeckStats(topicPath: TopicPath): DeckStats;
     getSubDecksWithCardsInQueue(deck: Deck): Deck[];
     skipCurrentCard(): void;
@@ -101,7 +103,7 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     private _originalDeckTree: Deck;
 
     // This is set by the caller, and must have the same deck hierarchy as originalDeckTree.
-    private remainingDeckTree: Deck;
+    private _remainingDeckTree: Deck;
 
     private reviewMode: FlashcardReviewMode;
     private cardSequencer: IDeckTreeIterator;
@@ -151,24 +153,73 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     setDeckTree(originalDeckTree: Deck, remainingDeckTree: Deck): void {
         this.cardSequencer.setBaseDeck(remainingDeckTree);
         this._originalDeckTree = originalDeckTree;
-        this.remainingDeckTree = remainingDeckTree;
+        this._remainingDeckTree = remainingDeckTree;
         this.setCurrentDeck(TopicPath.emptyPath);
     }
 
     setCurrentDeck(topicPath: TopicPath): void {
+        // Restore any cards that were stashed by setCurrentDeckFilteredByNote
+        this._restoreStashedCards();
         this.cardSequencer.setIteratorTopicPath(topicPath);
         this.cardSequencer.nextCard();
+    }
+
+    setCurrentDeckFilteredByNote(topicPath: TopicPath, noteFilePath: string): void {
+        // Restore any previously stashed cards first
+        this._restoreStashedCards();
+
+        // Temporarily remove non-matching cards from the remaining deck
+        // so the iterator only sees cards from the specified note.
+        // The stashed cards are restored when setCurrentDeck is called.
+        const remainingDeck = this._remainingDeckTree.getDeck(topicPath);
+        const stashedDue: Card[] = [];
+        const stashedNew: Card[] = [];
+
+        for (let i = remainingDeck.dueFlashcards.length - 1; i >= 0; i--) {
+            if (remainingDeck.dueFlashcards[i].question.note.file.path !== noteFilePath) {
+                stashedDue.push(remainingDeck.dueFlashcards[i]);
+                remainingDeck.dueFlashcards.splice(i, 1);
+            }
+        }
+        for (let i = remainingDeck.newFlashcards.length - 1; i >= 0; i--) {
+            if (remainingDeck.newFlashcards[i].question.note.file.path !== noteFilePath) {
+                stashedNew.push(remainingDeck.newFlashcards[i]);
+                remainingDeck.newFlashcards.splice(i, 1);
+            }
+        }
+
+        this._stashedCards = { deck: remainingDeck, dueCards: stashedDue, newCards: stashedNew };
+        this.cardSequencer.setIteratorTopicPath(topicPath);
+        this.cardSequencer.nextCard();
+    }
+
+    private _stashedCards: {
+        deck: Deck;
+        dueCards: Card[];
+        newCards: Card[];
+    } | null = null;
+
+    private _restoreStashedCards(): void {
+        if (this._stashedCards) {
+            this._stashedCards.deck.dueFlashcards.push(...this._stashedCards.dueCards);
+            this._stashedCards.deck.newFlashcards.push(...this._stashedCards.newCards);
+            this._stashedCards = null;
+        }
     }
 
     get originalDeckTree(): Deck {
         return this._originalDeckTree;
     }
 
+    get remainingDeckTree(): Deck {
+        return this._remainingDeckTree;
+    }
+
     getDeckStats(topicPath: TopicPath): DeckStats {
         const totalCount: number = this._originalDeckTree
             .getDeck(topicPath)
             .getDistinctCardCount(CardListType.All, true);
-        const remainingDeck: Deck = this.remainingDeckTree.getDeck(topicPath);
+        const remainingDeck: Deck = this._remainingDeckTree.getDeck(topicPath);
         const newCount: number = remainingDeck.getDistinctCardCount(CardListType.NewCard, true);
         const dueCount: number = remainingDeck.getDistinctCardCount(CardListType.DueCard, true);
 

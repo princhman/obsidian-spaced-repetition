@@ -170,6 +170,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Podtalie powinny być początkowo wyświetlane rozszerzone",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Wyłącz to, aby zwinąć zagnieżdżone talie w tej samej karcie. Przydatne, jeśli karty należą do wielu talii w tym samym pliku.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algorytm",
     CHECK_ALGORITHM_WIKI:
         'Aby uzyskać więcej informacji, sprawdź <a href="${algoUrl}">implementację algorytmu</a>.',

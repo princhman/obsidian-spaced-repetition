@@ -17,6 +17,8 @@ import {
     FlashcardReviewSequencer,
     IFlashcardReviewSequencer,
 } from "src/flashcard-review-sequencer";
+import { Note } from "src/note";
+import { NoteParser } from "src/note-parser";
 import { QuestionPostponementList } from "src/question-postponement-list";
 import { DEFAULT_SETTINGS, SRSettings } from "src/settings";
 import { TopicPath } from "src/topic-path";
@@ -24,10 +26,11 @@ import {
     setupStaticDateProvider20230906,
     setupStaticDateProviderOriginDatePlusDays,
 } from "src/utils/dates";
+import { TextDirection } from "src/utils/strings";
 
 import { UnitTestSRFile } from "./helpers/unit-test-file";
 import { unitTestSetupStandardDataStoreAlgorithm } from "./helpers/unit-test-setup";
-import { SampleItemDecks } from "./sample-items";
+import { createTestNoteParser, SampleItemDecks } from "./sample-items";
 
 const orderDueFirstSequential: IIteratorOrder = {
     cardOrder: CardOrder.DueFirstSequential,
@@ -1139,3 +1142,271 @@ async function checkUpdateCurrentQuestionText(
     expect(await c.file.read()).toEqual(expectedFileText);
     return c;
 }
+
+/**
+ * Helper to build a deck tree from multiple files, each contributing cards to the same deck.
+ * Returns both the original and remaining deck trees plus the sequencer.
+ */
+async function setupMultiFileContext(
+    files: { text: string; path: string }[],
+    settings: SRSettings = DEFAULT_SETTINGS,
+    reviewMode: FlashcardReviewMode = FlashcardReviewMode.Review,
+): Promise<{
+    reviewSequencer: FlashcardReviewSequencer;
+    originalDeckTree: Deck;
+    remainingDeckTree: Deck;
+    questionPostponementList: QuestionPostponementList;
+}> {
+    const settingsClone: SRSettings = { ...settings };
+    unitTestSetupStandardDataStoreAlgorithm(settingsClone);
+
+    const deck: Deck = new Deck("Root", null);
+    const noteParser: NoteParser = createTestNoteParser();
+
+    for (const fileInfo of files) {
+        const file = new UnitTestSRFile(fileInfo.text, fileInfo.path);
+        const note: Note = await noteParser.parse(file, TextDirection.Ltr, TopicPath.emptyPath);
+        note.appendCardsToDeck(deck);
+    }
+
+    const questionPostponementList = new QuestionPostponementList(null, settingsClone, []);
+    const remainingDeckTree = DeckTreeFilter.filterForRemainingCards(
+        questionPostponementList,
+        deck,
+        reviewMode,
+    );
+
+    const cardSequencer: IDeckTreeIterator = new DeckTreeIterator(orderDueFirstSequential, null);
+    const dueDateFlashcardHistogram = new CardDueDateHistogram();
+    const reviewSequencer = new FlashcardReviewSequencer(
+        reviewMode,
+        cardSequencer,
+        settingsClone,
+        SrsAlgorithm.getInstance(),
+        questionPostponementList,
+        dueDateFlashcardHistogram,
+    );
+
+    reviewSequencer.setDeckTree(deck, remainingDeckTree);
+
+    return { reviewSequencer, originalDeckTree: deck, remainingDeckTree, questionPostponementList };
+}
+
+describe("setCurrentDeckFilteredByNote", () => {
+    test("Only cards from the specified note file are iterated", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1_fileA::A1_fileA
+Q2_fileA::A2_fileA`,
+                path: "notes/fileA.md",
+            },
+            {
+                text: `#flashcards
+Q1_fileB::A1_fileB
+Q3_fileB::A3_fileB`,
+                path: "notes/fileB.md",
+            },
+        ]);
+
+        // All cards from both files should be available initially
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+        expect(
+            reviewSequencer.remainingDeckTree
+                .getDeck(topicPath)
+                .getCardCount(CardListType.All, false),
+        ).toEqual(4);
+
+        // Filter to only fileA's cards
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileA.md");
+
+        // Should get first card from fileA
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileA");
+
+        // Skip it, next card should also be from fileA
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+        expect(reviewSequencer.currentCard.front).toEqual("Q2_fileA");
+
+        // Skip again, no more cards from fileA
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+    });
+
+    test("Cards from other notes are restored when setCurrentDeck is called", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1_fileA::A1_fileA`,
+                path: "notes/fileA.md",
+            },
+            {
+                text: `#flashcards
+Q1_fileB::A1_fileB
+Q2_fileB::A2_fileB`,
+                path: "notes/fileB.md",
+            },
+        ]);
+
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+
+        // Filter to fileA only
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileA.md");
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileA");
+
+        // Skip the only fileA card
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+
+        // Now go back to the full deck - fileB's cards should be restored
+        reviewSequencer.setCurrentDeck(topicPath);
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+
+        // Collect all remaining cards - both fileB cards should be present
+        const fronts: string[] = [];
+        while (reviewSequencer.hasCurrentCard) {
+            fronts.push(reviewSequencer.currentCard.front);
+            reviewSequencer.skipCurrentCard();
+        }
+        expect(fronts.sort()).toEqual(["Q1_fileB", "Q2_fileB"]);
+    });
+
+    test("Reviewing a card in filtered mode removes it from the deck", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1_fileA::A1_fileA
+Q2_fileA::A2_fileA`,
+                path: "notes/fileA.md",
+            },
+            {
+                text: `#flashcards
+Q1_fileB::A1_fileB`,
+                path: "notes/fileB.md",
+            },
+        ]);
+
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+
+        // Filter to fileA
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileA.md");
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileA");
+
+        // Review the card (Easy removes it from the deck)
+        await reviewSequencer.processReview(ReviewResponse.Easy);
+        expect(reviewSequencer.currentCard.front).toEqual("Q2_fileA");
+
+        // Review the second card
+        await reviewSequencer.processReview(ReviewResponse.Easy);
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+
+        // Go back to full deck - only fileB's card should remain
+        reviewSequencer.setCurrentDeck(topicPath);
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileB");
+
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+    });
+
+    test("Switching between different note filters works correctly", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1_fileA::A1_fileA`,
+                path: "notes/fileA.md",
+            },
+            {
+                text: `#flashcards
+Q1_fileB::A1_fileB`,
+                path: "notes/fileB.md",
+            },
+            {
+                text: `#flashcards
+Q1_fileC::A1_fileC`,
+                path: "notes/fileC.md",
+            },
+        ]);
+
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+
+        // Filter to fileA
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileA.md");
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileA");
+
+        // Switch directly to fileB filter (without calling setCurrentDeck first)
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileB.md");
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileB");
+
+        // Switch to fileC
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileC.md");
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_fileC");
+
+        // Go back to full deck - all remaining cards from all files should be there
+        // (fileA and fileB cards were stashed and should be restored)
+        reviewSequencer.setCurrentDeck(topicPath);
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+
+        // Collect all remaining card fronts
+        const fronts: string[] = [];
+        while (reviewSequencer.hasCurrentCard) {
+            fronts.push(reviewSequencer.currentCard.front);
+            reviewSequencer.skipCurrentCard();
+        }
+        expect(fronts).toContain("Q1_fileA");
+        expect(fronts).toContain("Q1_fileB");
+    });
+
+    test("Due and new cards from the specified note are both included", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1_new_A::A1_new_A
+Q2_due_A::A2_due_A <!--SR:!2023-09-02,4,270-->`,
+                path: "notes/fileA.md",
+            },
+            {
+                text: `#flashcards
+Q1_new_B::A1_new_B
+Q2_due_B::A2_due_B <!--SR:!2023-09-02,4,270-->`,
+                path: "notes/fileB.md",
+            },
+        ]);
+
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+
+        // Filter to fileA
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/fileA.md");
+
+        // Due first sequential, so due card first
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+        expect(reviewSequencer.currentCard.front).toEqual("Q2_due_A");
+
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.currentCard.front).toEqual("Q1_new_A");
+
+        reviewSequencer.skipCurrentCard();
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+    });
+
+    test("Filtering with a non-existent file path results in no cards", async () => {
+        const { reviewSequencer } = await setupMultiFileContext([
+            {
+                text: `#flashcards
+Q1::A1`,
+                path: "notes/fileA.md",
+            },
+        ]);
+
+        const topicPath = TopicPath.getTopicPathFromTag("#flashcards");
+
+        reviewSequencer.setCurrentDeckFilteredByNote(topicPath, "notes/nonexistent.md");
+        expect(reviewSequencer.hasCurrentCard).toBe(false);
+
+        // Cards should be restored when going back to the full deck
+        reviewSequencer.setCurrentDeck(topicPath);
+        expect(reviewSequencer.hasCurrentCard).toBe(true);
+        expect(reviewSequencer.currentCard.front).toEqual("Q1");
+    });
+});

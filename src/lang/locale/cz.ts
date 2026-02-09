@@ -166,6 +166,8 @@ export default {
         "Stromy balíčky by měly být zpočátku zobrazeny jako rozbalené",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Vypněte toto, chcete-li sbalit vnořené balíčky na stejné kartě. To je užitečné, pokud máte kartičky, které patří k mnoha balíčkům ve stejném souboru.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritmus",
     CHECK_ALGORITHM_WIKI: 'Pro více informací jděte na <a href="${algoUrl}">popis algoritmu</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",

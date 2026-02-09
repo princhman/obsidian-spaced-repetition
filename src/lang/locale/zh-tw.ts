@@ -155,6 +155,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "牌組樹最初應顯示為展開",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "關閉此選項可摺疊同一張卡片中的巢狀牌組。如果您的卡片屬於同一檔案中的許多套牌，則很有用。",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "演算法",
     CHECK_ALGORITHM_WIKI: '瞭解更多, 請點選<a href="${algoUrl}">算法實現</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",

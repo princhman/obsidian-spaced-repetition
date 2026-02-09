@@ -12,6 +12,8 @@ export interface PluginData {
     buryList: string[];
     historyDeck: string | null;
     reviewHistory: ReviewHistory;
+    // Maps deck topic path (e.g. "UNI/Term 2/TOC") to collapsed state (true = collapsed)
+    deckCollapseState: Record<string, boolean>;
 }
 
 export const DEFAULT_DATA: PluginData = {
@@ -20,4 +22,5 @@ export const DEFAULT_DATA: PluginData = {
     buryList: [],
     historyDeck: null,
     reviewHistory: {},
+    deckCollapseState: {},
 };

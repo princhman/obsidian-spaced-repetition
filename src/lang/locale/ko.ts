@@ -166,6 +166,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "덱 트리는 처음에 확장된 것으로 표시되어야 합니다.",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "같은 카드에 중첩된 덱을 접으려면 이 옵션을 끄십시오. 같은 파일에 여러 덱에 속한 카드가 있는 경우 유용합니다.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "알고리즘",
     CHECK_ALGORITHM_WIKI:
         '더 많은 정보를 원하시면, <a href="${algoUrl}">algorithm details</a>을 확인해주세요.',

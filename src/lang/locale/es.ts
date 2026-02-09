@@ -169,6 +169,8 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Los árboles de mazos deberían ser expandidos al inicio.",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Desactiva esto para contraer mazos anidados en la misma tarjeta. Útil si tienes tarjetas que pertenecen a muchos mazos en el mismo archivo.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritmo",
     CHECK_ALGORITHM_WIKI:
         'Para más información, revisa la <a href="${algoUrl}">implementación del algoritmo</a>.',
