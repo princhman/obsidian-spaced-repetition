@@ -72,6 +72,7 @@ export class SRSettingTab extends PluginSettingTab {
                         this.statistics = new StatisticsView(
                             containerElement,
                             this.plugin.osrAppCore,
+                            this.plugin.data.reviewHistory || {},
                         );
                         this.statistics.render();
                     },
@@ -833,121 +834,199 @@ export class SRSettingTab extends PluginSettingTab {
             dropdown
                 .addOptions({
                     "SM-2-OSR": t("SM2_OSR_VARIANT"),
+                    FSRS: t("FSRS_VARIANT"),
                 })
                 .setValue(this.plugin.data.settings.algorithm)
                 .onChange(async (value) => {
                     this.plugin.data.settings.algorithm = value;
                     await this.plugin.savePluginData();
+                    this.display();
                 }),
         );
 
-        new Setting(containerEl)
-            .setName(t("BASE_EASE"))
-            .setDesc(t("BASE_EASE_DESC"))
-            .addText((text) =>
-                text.setValue(this.plugin.data.settings.baseEase.toString()).onChange((value) => {
-                    applySettingsUpdate(async () => {
-                        const numValue: number = Number.parseInt(value);
-                        if (!isNaN(numValue)) {
-                            if (numValue < 130) {
-                                new Notice(t("BASE_EASE_MIN_WARNING"));
-                                text.setValue(this.plugin.data.settings.baseEase.toString());
-                                return;
-                            }
+        const isFsrs = this.plugin.data.settings.algorithm === "FSRS";
 
-                            this.plugin.data.settings.baseEase = numValue;
-                            await this.plugin.savePluginData();
-                        } else {
-                            new Notice(t("VALID_NUMBER_WARNING"));
-                        }
-                    });
-                }),
-            )
-            .addExtraButton((button) => {
-                button
-                    .setIcon("reset")
-                    .setTooltip(t("RESET_DEFAULT"))
-                    .onClick(async () => {
-                        this.plugin.data.settings.baseEase = DEFAULT_SETTINGS.baseEase;
-                        await this.plugin.savePluginData();
+        if (!isFsrs) {
+            new Setting(containerEl)
+                .setName(t("BASE_EASE"))
+                .setDesc(t("BASE_EASE_DESC"))
+                .addText((text) =>
+                    text
+                        .setValue(this.plugin.data.settings.baseEase.toString())
+                        .onChange((value) => {
+                            applySettingsUpdate(async () => {
+                                const numValue: number = Number.parseInt(value);
+                                if (!isNaN(numValue)) {
+                                    if (numValue < 130) {
+                                        new Notice(t("BASE_EASE_MIN_WARNING"));
+                                        text.setValue(
+                                            this.plugin.data.settings.baseEase.toString(),
+                                        );
+                                        return;
+                                    }
 
-                        this.display();
-                    });
-            });
-
-        new Setting(containerEl)
-            .setName(t("LAPSE_INTERVAL_CHANGE"))
-            .setDesc(t("LAPSE_INTERVAL_CHANGE_DESC"))
-            .addSlider((slider) =>
-                slider
-                    .setLimits(1, 99, 1)
-                    .setValue(this.plugin.data.settings.lapsesIntervalChange * 100)
-                    .setDynamicTooltip()
-                    .onChange(async (value: number) => {
-                        this.plugin.data.settings.lapsesIntervalChange = value / 100;
-                        await this.plugin.savePluginData();
-                    }),
-            )
-            .addExtraButton((button) => {
-                button
-                    .setIcon("reset")
-                    .setTooltip(t("RESET_DEFAULT"))
-                    .onClick(async () => {
-                        this.plugin.data.settings.lapsesIntervalChange =
-                            DEFAULT_SETTINGS.lapsesIntervalChange;
-                        await this.plugin.savePluginData();
-
-                        this.display();
-                    });
-            });
-
-        new Setting(containerEl)
-            .setName(t("EASY_BONUS"))
-            .setDesc(t("EASY_BONUS_DESC"))
-            .addText((text) =>
-                text
-                    .setValue((this.plugin.data.settings.easyBonus * 100).toString())
-                    .onChange((value) => {
-                        applySettingsUpdate(async () => {
-                            const numValue: number = Number.parseInt(value) / 100;
-                            if (!isNaN(numValue)) {
-                                if (numValue < 1.0) {
-                                    new Notice(t("EASY_BONUS_MIN_WARNING"));
-                                    text.setValue(
-                                        (this.plugin.data.settings.easyBonus * 100).toString(),
-                                    );
-                                    return;
+                                    this.plugin.data.settings.baseEase = numValue;
+                                    await this.plugin.savePluginData();
+                                } else {
+                                    new Notice(t("VALID_NUMBER_WARNING"));
                                 }
+                            });
+                        }),
+                )
+                .addExtraButton((button) => {
+                    button
+                        .setIcon("reset")
+                        .setTooltip(t("RESET_DEFAULT"))
+                        .onClick(async () => {
+                            this.plugin.data.settings.baseEase = DEFAULT_SETTINGS.baseEase;
+                            await this.plugin.savePluginData();
 
-                                this.plugin.data.settings.easyBonus = numValue;
-                                await this.plugin.savePluginData();
-                            } else {
-                                new Notice(t("VALID_NUMBER_WARNING"));
-                            }
+                            this.display();
                         });
-                    }),
-            )
-            .addExtraButton((button) => {
-                button
-                    .setIcon("reset")
-                    .setTooltip(t("RESET_DEFAULT"))
-                    .onClick(async () => {
-                        this.plugin.data.settings.easyBonus = DEFAULT_SETTINGS.easyBonus;
-                        await this.plugin.savePluginData();
+                });
 
-                        this.display();
-                    });
-            });
+            new Setting(containerEl)
+                .setName(t("LAPSE_INTERVAL_CHANGE"))
+                .setDesc(t("LAPSE_INTERVAL_CHANGE_DESC"))
+                .addSlider((slider) =>
+                    slider
+                        .setLimits(1, 99, 1)
+                        .setValue(this.plugin.data.settings.lapsesIntervalChange * 100)
+                        .setDynamicTooltip()
+                        .onChange(async (value: number) => {
+                            this.plugin.data.settings.lapsesIntervalChange = value / 100;
+                            await this.plugin.savePluginData();
+                        }),
+                )
+                .addExtraButton((button) => {
+                    button
+                        .setIcon("reset")
+                        .setTooltip(t("RESET_DEFAULT"))
+                        .onClick(async () => {
+                            this.plugin.data.settings.lapsesIntervalChange =
+                                DEFAULT_SETTINGS.lapsesIntervalChange;
+                            await this.plugin.savePluginData();
 
-        new Setting(containerEl)
-            .setName(t("LOAD_BALANCE"))
-            .setDesc(t("LOAD_BALANCE_DESC"))
-            .addToggle((toggle) =>
-                toggle.setValue(this.plugin.data.settings.loadBalance).onChange(async (value) => {
-                    this.plugin.data.settings.loadBalance = value;
-                    await this.plugin.savePluginData();
-                }),
-            );
+                            this.display();
+                        });
+                });
+
+            new Setting(containerEl)
+                .setName(t("EASY_BONUS"))
+                .setDesc(t("EASY_BONUS_DESC"))
+                .addText((text) =>
+                    text
+                        .setValue((this.plugin.data.settings.easyBonus * 100).toString())
+                        .onChange((value) => {
+                            applySettingsUpdate(async () => {
+                                const numValue: number = Number.parseInt(value) / 100;
+                                if (!isNaN(numValue)) {
+                                    if (numValue < 1.0) {
+                                        new Notice(t("EASY_BONUS_MIN_WARNING"));
+                                        text.setValue(
+                                            (this.plugin.data.settings.easyBonus * 100).toString(),
+                                        );
+                                        return;
+                                    }
+
+                                    this.plugin.data.settings.easyBonus = numValue;
+                                    await this.plugin.savePluginData();
+                                } else {
+                                    new Notice(t("VALID_NUMBER_WARNING"));
+                                }
+                            });
+                        }),
+                )
+                .addExtraButton((button) => {
+                    button
+                        .setIcon("reset")
+                        .setTooltip(t("RESET_DEFAULT"))
+                        .onClick(async () => {
+                            this.plugin.data.settings.easyBonus = DEFAULT_SETTINGS.easyBonus;
+                            await this.plugin.savePluginData();
+
+                            this.display();
+                        });
+                });
+
+            new Setting(containerEl)
+                .setName(t("LOAD_BALANCE"))
+                .setDesc(t("LOAD_BALANCE_DESC"))
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(this.plugin.data.settings.loadBalance)
+                        .onChange(async (value) => {
+                            this.plugin.data.settings.loadBalance = value;
+                            await this.plugin.savePluginData();
+                        }),
+                );
+
+            new Setting(containerEl)
+                .setName(t("MAX_LINK_CONTRIB"))
+                .setDesc(t("MAX_LINK_CONTRIB_DESC"))
+                .addSlider((slider) =>
+                    slider
+                        .setLimits(0, 100, 1)
+                        .setValue(this.plugin.data.settings.maxLinkFactor * 100)
+                        .setDynamicTooltip()
+                        .onChange(async (value: number) => {
+                            this.plugin.data.settings.maxLinkFactor = value / 100;
+                            await this.plugin.savePluginData();
+                        }),
+                )
+                .addExtraButton((button) => {
+                    button
+                        .setIcon("reset")
+                        .setTooltip(t("RESET_DEFAULT"))
+                        .onClick(async () => {
+                            this.plugin.data.settings.maxLinkFactor =
+                                DEFAULT_SETTINGS.maxLinkFactor;
+                            await this.plugin.savePluginData();
+
+                            this.display();
+                        });
+                });
+        }
+
+        if (isFsrs) {
+            new Setting(containerEl)
+                .setName(t("FSRS_REQUEST_RETENTION"))
+                .setDesc(t("FSRS_REQUEST_RETENTION_DESC"))
+                .addSlider((slider) =>
+                    slider
+                        .setLimits(70, 99, 1)
+                        .setValue(this.plugin.data.settings.fsrsRequestRetention * 100)
+                        .setDynamicTooltip()
+                        .onChange(async (value: number) => {
+                            this.plugin.data.settings.fsrsRequestRetention = value / 100;
+                            await this.plugin.savePluginData();
+                        }),
+                )
+                .addExtraButton((button) => {
+                    button
+                        .setIcon("reset")
+                        .setTooltip(t("RESET_DEFAULT"))
+                        .onClick(async () => {
+                            this.plugin.data.settings.fsrsRequestRetention =
+                                DEFAULT_SETTINGS.fsrsRequestRetention;
+                            await this.plugin.savePluginData();
+
+                            this.display();
+                        });
+                });
+
+            new Setting(containerEl)
+                .setName(t("FSRS_ENABLE_FUZZ"))
+                .setDesc(t("FSRS_ENABLE_FUZZ_DESC"))
+                .addToggle((toggle) =>
+                    toggle
+                        .setValue(this.plugin.data.settings.fsrsEnableFuzz)
+                        .onChange(async (value) => {
+                            this.plugin.data.settings.fsrsEnableFuzz = value;
+                            await this.plugin.savePluginData();
+                        }),
+                );
+        }
 
         new Setting(containerEl)
             .setName(t("MAX_INTERVAL"))
@@ -982,31 +1061,6 @@ export class SRSettingTab extends PluginSettingTab {
                     .onClick(async () => {
                         this.plugin.data.settings.maximumInterval =
                             DEFAULT_SETTINGS.maximumInterval;
-                        await this.plugin.savePluginData();
-
-                        this.display();
-                    });
-            });
-
-        new Setting(containerEl)
-            .setName(t("MAX_LINK_CONTRIB"))
-            .setDesc(t("MAX_LINK_CONTRIB_DESC"))
-            .addSlider((slider) =>
-                slider
-                    .setLimits(0, 100, 1)
-                    .setValue(this.plugin.data.settings.maxLinkFactor * 100)
-                    .setDynamicTooltip()
-                    .onChange(async (value: number) => {
-                        this.plugin.data.settings.maxLinkFactor = value / 100;
-                        await this.plugin.savePluginData();
-                    }),
-            )
-            .addExtraButton((button) => {
-                button
-                    .setIcon("reset")
-                    .setTooltip(t("RESET_DEFAULT"))
-                    .onClick(async () => {
-                        this.plugin.data.settings.maxLinkFactor = DEFAULT_SETTINGS.maxLinkFactor;
                         await this.plugin.savePluginData();
 
                         this.display();

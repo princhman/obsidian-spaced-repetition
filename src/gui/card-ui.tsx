@@ -3,6 +3,7 @@ import { App, Notice, Platform, setIcon } from "obsidian";
 
 import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
+import { RepItemScheduleInfoFsrs } from "src/algorithms/fsrs/rep-item-schedule-info-fsrs";
 import { textInterval } from "src/algorithms/osr/note-scheduling";
 import { Card } from "src/card";
 import { Deck } from "src/deck";
@@ -247,6 +248,7 @@ export class CardUI {
         this.lastPressed = timeNow;
 
         await this.reviewSequencer.processReview(response);
+        this.plugin.recordReview();
         await this._showNextCard();
     }
 
@@ -328,14 +330,26 @@ export class CardUI {
     private _displayCurrentCardInfoNotice() {
         const schedule = this._currentCard.scheduleInfo;
 
-        const currentEaseStr = t("CURRENT_EASE_HELP_TEXT") + (schedule?.latestEase ?? t("NEW"));
-        const currentIntervalStr =
-            t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule?.interval, false);
+        let infoStr: string;
+        if (schedule instanceof RepItemScheduleInfoFsrs) {
+            const stabilityStr = t("FSRS_STABILITY") + ": " + schedule.stability.toFixed(1) + "d";
+            const difficultyStr =
+                t("FSRS_DIFFICULTY") + ": " + schedule.difficulty.toFixed(1) + "/10";
+            const intervalStr =
+                t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule.interval, false);
+            infoStr = [stabilityStr, difficultyStr, intervalStr].join("\n");
+        } else {
+            const currentEaseStr = t("CURRENT_EASE_HELP_TEXT") + (schedule?.latestEase ?? t("NEW"));
+            const currentIntervalStr =
+                t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule?.interval, false);
+            infoStr = currentEaseStr + "\n" + currentIntervalStr;
+        }
+
         const generatedFromStr = t("CARD_GENERATED_FROM", {
             notePath: this._currentQuestion.note.filePath,
         });
 
-        new Notice(currentEaseStr + "\n" + currentIntervalStr + "\n" + generatedFromStr);
+        new Notice(infoStr + "\n" + generatedFromStr);
     }
 
     // #region -> Deck Info

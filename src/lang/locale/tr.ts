@@ -171,6 +171,15 @@ export default {
     CHECK_ALGORITHM_WIKI:
         'Daha fazla bilgi için <a href="${algoUrl}">algoritma uygulamasına</a> göz atın.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Temel kolaylık",
     BASE_EASE_DESC: "minimum = 130, tercihen yaklaşık 250.",
     BASE_EASE_MIN_WARNING: "Temel kolaylık en az 130 olmalıdır.",

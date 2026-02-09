@@ -173,6 +173,15 @@ export default {
     CHECK_ALGORITHM_WIKI:
         'Para más información, revisa la <a href="${algoUrl}">implementación del algoritmo</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Base ease",
     BASE_EASE_DESC: "El mínimo es 130, es preferible que esté aproximado a 250.",
     BASE_EASE_MIN_WARNING: "La facilidad base de las tarjetas debe ser al menos 130.",

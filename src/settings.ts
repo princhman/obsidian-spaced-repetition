@@ -56,6 +56,11 @@ export interface SRSettings {
     maximumInterval: number;
     maxLinkFactor: number;
 
+    // FSRS algorithm settings
+    fsrsRequestRetention: number;
+    fsrsEnableFuzz: boolean;
+    fsrsWeights: number[];
+
     // storage
     dataStore: string;
     cardCommentOnSameLine: boolean;
@@ -115,6 +120,11 @@ export const DEFAULT_SETTINGS: SRSettings = {
     loadBalance: true,
     maximumInterval: 36525,
     maxLinkFactor: 1.0,
+
+    // FSRS algorithm settings
+    fsrsRequestRetention: 0.9,
+    fsrsEnableFuzz: true,
+    fsrsWeights: [],
 
     // storage
     dataStore: DataStoreName.NOTES,

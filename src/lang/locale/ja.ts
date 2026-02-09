@@ -173,6 +173,15 @@ export default {
     CHECK_ALGORITHM_WIKI:
         '詳細については<a href="${algoUrl}">アルゴリズムの実装</a>を確認してください。',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "ベースの易しさ",
     BASE_EASE_DESC: "最小値は130ですが、 適正値はおおよそ250です。",
     BASE_EASE_MIN_WARNING: "ベースの易しさには130以上の数字を指定してください。",

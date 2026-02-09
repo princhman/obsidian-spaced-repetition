@@ -1,11 +1,15 @@
 import { Menu, Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
 
+import { Algorithm } from "src/algorithms/base/isrs-algorithm";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
+import { SrsAlgorithmFsrs } from "src/algorithms/fsrs/srs-algorithm-fsrs";
 import { ObsidianVaultNoteLinkInfoFinder } from "src/algorithms/osr/obsidian-vault-notelink-info-finder";
 import { SrsAlgorithmOsr } from "src/algorithms/osr/srs-algorithm-osr";
+import { PREFERRED_DATE_FORMAT } from "src/constants";
 import { OsrAppCore } from "src/core";
 import { DataStoreAlgorithm } from "src/data-store-algorithm/data-store-algorithm";
+import { DataStoreInNoteAlgorithmFsrs } from "src/data-store-algorithm/data-store-in-note-algorithm-fsrs";
 import { DataStoreInNoteAlgorithmOsr } from "src/data-store-algorithm/data-store-in-note-algorithm-osr";
 import { DataStore } from "src/data-stores/base/data-store";
 import { StoreInNotes } from "src/data-stores/notes/notes";
@@ -498,14 +502,23 @@ export default class SRPlugin extends Plugin {
             return;
         }
 
-        //
         await this.osrAppCore.saveNoteReviewResponse(noteSrTFile, response, this.data.settings);
+        this.recordReview();
 
         new Notice(t("RESPONSE_RECEIVED"));
 
         if (this.data.settings.autoNextNote) {
             this.nextNoteReviewHandler.autoReviewNextNote();
         }
+    }
+
+    recordReview(): void {
+        const today = window.moment().format(PREFERRED_DATE_FORMAT);
+        if (!this.data.reviewHistory) {
+            this.data.reviewHistory = {};
+        }
+        this.data.reviewHistory[today] = (this.data.reviewHistory[today] || 0) + 1;
+        this.savePluginData();
     }
 
     createSrTFile(note: TFile): SrTFile {
@@ -523,10 +536,15 @@ export default class SRPlugin extends Plugin {
     }
 
     setupDataStoreAndAlgorithmInstances(settings: SRSettings) {
-        // For now we can hardcode as we only support the one data store and one algorithm
         DataStore.instance = new StoreInNotes(settings);
-        SrsAlgorithm.instance = new SrsAlgorithmOsr(settings);
-        DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmOsr(settings);
+
+        if (settings.algorithm === Algorithm.FSRS) {
+            SrsAlgorithm.instance = new SrsAlgorithmFsrs(settings);
+            DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmFsrs(settings);
+        } else {
+            SrsAlgorithm.instance = new SrsAlgorithmOsr(settings);
+            DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmOsr(settings);
+        }
     }
     async savePluginData(): Promise<void> {
         await this.saveData(this.data);

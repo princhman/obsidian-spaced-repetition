@@ -156,6 +156,15 @@ export default {
     ALGORITHM: "算法",
     CHECK_ALGORITHM_WIKI: '了解更多, 请点击<a href="${algoUrl}">算法实现</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "基础掌握程度",
     BASE_EASE_DESC: "最小值130，推荐值约250.",
     BASE_EASE_MIN_WARNING: "基础掌握程度的最小值为130。",

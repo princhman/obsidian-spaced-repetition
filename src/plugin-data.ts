@@ -1,5 +1,8 @@
 import { DEFAULT_SETTINGS, SRSettings } from "src/settings";
 
+// Maps date string (YYYY-MM-DD) to number of reviews on that day
+export type ReviewHistory = Record<string, number>;
+
 export interface PluginData {
     settings: SRSettings;
     buryDate: string;
@@ -8,6 +11,7 @@ export interface PluginData {
     // which covers most of the cases
     buryList: string[];
     historyDeck: string | null;
+    reviewHistory: ReviewHistory;
 }
 
 export const DEFAULT_DATA: PluginData = {
@@ -15,4 +19,5 @@ export const DEFAULT_DATA: PluginData = {
     buryDate: "",
     buryList: [],
     historyDeck: null,
+    reviewHistory: {},
 };

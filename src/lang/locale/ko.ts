@@ -170,6 +170,15 @@ export default {
     CHECK_ALGORITHM_WIKI:
         '더 많은 정보를 원하시면, <a href="${algoUrl}">algorithm details</a>을 확인해주세요.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "기본 ease",
     BASE_EASE_DESC: "최솟값 = 130, 적정치는 대략 250입니다.",
     BASE_EASE_MIN_WARNING: "기본 ease는 적어도 130 이어야 합니다.",

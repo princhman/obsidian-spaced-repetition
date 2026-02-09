@@ -169,6 +169,15 @@ export default {
     ALGORITHM: "Algoritmus",
     CHECK_ALGORITHM_WIKI: 'Pro více informací jděte na <a href="${algoUrl}">popis algoritmu</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Základní složitost",
     BASE_EASE_DESC: "minimum = 130, nejlépe přibližně 250.",
     BASE_EASE_MIN_WARNING: "Základní složitost musí být minimálně 130.",

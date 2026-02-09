@@ -40,6 +40,11 @@ export const COLLAPSE_ICON =
 export const TICKS_PER_DAY = 24 * 3600 * 1000;
 
 export const SR_HTML_COMMENT_BEGIN = "<!--SR:";
+export const SR_FSRS_HTML_COMMENT_BEGIN = "<!--SR-FSRS:";
 export const SR_HTML_COMMENT_END = "-->";
+
+// FSRS scheduling format: !date,stability,difficulty,state,elapsed_days,scheduled_days,reps,lapses,learning_steps,last_review
+export const MULTI_SCHEDULING_EXTRACTOR_FSRS =
+    /!([\d-]+),([\d.]+),([\d.]+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([\d-]+)/gm;
 
 export const SR_TAB_VIEW = "spaced-repetition-tab-view";

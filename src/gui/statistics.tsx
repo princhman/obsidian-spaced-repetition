@@ -1,357 +1,221 @@
-import {
-    ArcElement,
-    BarController,
-    BarElement,
-    CategoryScale,
-    Chart,
-    ChartTypeRegistry,
-    Legend,
-    LinearScale,
-    PieController,
-    SubTitle,
-    Title,
-    Tooltip,
-} from "chart.js";
-import { Grid } from "gridjs";
-import path from "path";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import h from "vhtml";
 
-import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
-import { textInterval } from "src/algorithms/osr/note-scheduling";
 import { OsrCore } from "src/core";
 import { CardListType } from "src/deck";
-import { t } from "src/lang/helpers";
-import { Stats } from "src/stats";
-import { getKeysPreserveType, getTypedObjectEntries, mapRecord } from "src/utils/types";
-
-Chart.register(
-    BarElement,
-    BarController,
-    Legend,
-    Title,
-    Tooltip,
-    SubTitle,
-    CategoryScale,
-    LinearScale,
-    PieController,
-    ArcElement,
-);
+import { ReviewHistory } from "src/plugin-data";
 
 export class StatisticsView {
     private containerEl: HTMLElement;
     private osrCore: OsrCore;
+    private reviewHistory: ReviewHistory;
 
-    private forecastChart: Chart;
-    private intervalsChart: Chart;
-    private easesChart: Chart;
-    private cardTypesChart: Chart;
-    private noteStatsGrid: Grid;
-
-    constructor(containerEl: HTMLElement, osrCore: OsrCore) {
+    constructor(containerEl: HTMLElement, osrCore: OsrCore, reviewHistory?: ReviewHistory) {
         this.containerEl = containerEl;
         this.osrCore = osrCore;
+        this.reviewHistory = reviewHistory || {};
     }
 
     render(): void {
-        this.containerEl.style.textAlign = "center";
+        this.containerEl.empty();
+        this.containerEl.addClass("sr-statistics");
 
-        this.containerEl.innerHTML += (
-            <select id="sr-chart-period">
-                <option value="month" selected>
-                    {t("MONTH")}
-                </option>
-                <option value="quarter">{t("QUARTER")}</option>
-                <option value="year">{t("YEAR")}</option>
-                <option value="lifetime">{t("LIFETIME")}</option>
-            </select>
-        );
+        // Summary cards row
+        this.renderSummaryCards();
 
-        // Add forecast
+        // Heatmap
+        this.renderHeatmap();
+    }
+
+    private renderSummaryCards(): void {
         const cardStats: Stats = this.osrCore.cardStats;
-        let maxN: number = cardStats.delayedDays.getMaxValue();
-        for (let dueOffset = 0; dueOffset <= maxN; dueOffset++) {
-            cardStats.delayedDays.clearCountIfMissing(dueOffset);
-        }
-
-        const dueDatesFlashcardsCopy: Record<number, number> = { 0: 0 };
-        for (const [dueOffset, dueCount] of getTypedObjectEntries(cardStats.delayedDays.dict)) {
-            if (dueOffset <= 0) {
-                dueDatesFlashcardsCopy[0] += dueCount;
-            } else {
-                dueDatesFlashcardsCopy[dueOffset] = dueCount;
-            }
-        }
-
-        const scheduledCount: number = cardStats.youngCount + cardStats.matureCount;
-        maxN = Math.max(maxN, 1);
-
-        this.containerEl.innerHTML += (
-            <div>
-                <canvas id="forecastChart"></canvas>
-                <span id="forecastChartSummary"></span>
-                <br />
-                <br />
-                <canvas id="intervalsChart"></canvas>
-                <span id="intervalsChartSummary"></span>
-                <br />
-                <br />
-                <canvas id="easesChart"></canvas>
-                <span id="easesChartSummary"></span>
-                <br />
-                <br />
-                <canvas id="cardTypesChart"></canvas>
-                <br />
-                <span id="cardTypesChartSummary"></span>
-                <br />
-                <br />
-                <h1>Notes</h1>
-                <div id="noteStats"></div>
-            </div>
-        );
-
-        this.forecastChart = createStatsChart(
-            "bar",
-            "forecastChart",
-            t("FORECAST"),
-            t("FORECAST_DESC"),
-            Object.keys(dueDatesFlashcardsCopy),
-            Object.values(dueDatesFlashcardsCopy),
-            t("REVIEWS_PER_DAY", { avg: (scheduledCount / maxN).toFixed(1) }),
-            t("SCHEDULED"),
-            t("DAYS"),
-            t("NUMBER_OF_CARDS"),
-        );
-
-        maxN = cardStats.intervals.getMaxValue();
-        for (let interval = 0; interval <= maxN; interval++) {
-            cardStats.intervals.clearCountIfMissing(interval);
-        }
-
-        // Add intervals
-        const averageInterval: string = textInterval(
-                Math.round(
-                    (cardStats.intervals.getTotalOfValueMultiplyCount() / scheduledCount) * 10,
-                ) / 10 || 0,
-                false,
-            ),
-            longestInterval: string = textInterval(cardStats.intervals.getMaxValue(), false);
-
-        this.intervalsChart = createStatsChart(
-            "bar",
-            "intervalsChart",
-            t("INTERVALS"),
-            t("INTERVALS_DESC"),
-            Object.keys(cardStats.intervals.dict),
-            Object.values(cardStats.intervals.dict),
-            t("INTERVALS_SUMMARY", { avg: averageInterval, longest: longestInterval }),
-            t("COUNT"),
-            t("DAYS"),
-            t("NUMBER_OF_CARDS"),
-        );
-
-        // Add eases
-        const eases: number[] = getKeysPreserveType(cardStats.eases.dict);
-        for (let ease = Math.min(...eases); ease <= Math.max(...eases); ease++) {
-            cardStats.eases.clearCountIfMissing(ease);
-        }
-        const averageEase: number =
-            Math.round(cardStats.eases.getTotalOfValueMultiplyCount() / scheduledCount) || 0;
-
-        this.easesChart = createStatsChart(
-            "bar",
-            "easesChart",
-            t("EASES"),
-            "",
-            Object.keys(cardStats.eases.dict),
-            Object.values(cardStats.eases.dict),
-            t("EASES_SUMMARY", { avgEase: averageEase }),
-            t("COUNT"),
-            t("EASES"),
-            t("NUMBER_OF_CARDS"),
-        );
-
-        // Add card types
-        const totalCardsCount: number = this.osrCore.reviewableDeckTree.getDistinctCardCount(
+        const totalCards = this.osrCore.reviewableDeckTree.getDistinctCardCount(
             CardListType.All,
             true,
         );
-        this.cardTypesChart = createStatsChart(
-            "pie",
-            "cardTypesChart",
-            t("CARD_TYPES"),
-            t("CARD_TYPES_DESC"),
-            [
-                `${t("CARD_TYPE_NEW")} - ${Math.round((cardStats.newCount / totalCardsCount) * 100)}%`,
-                `${t("CARD_TYPE_YOUNG")} - ${Math.round(
-                    (cardStats.youngCount / totalCardsCount) * 100,
-                )}%`,
-                `${t("CARD_TYPE_MATURE")} - ${Math.round(
-                    (cardStats.matureCount / totalCardsCount) * 100,
-                )}%`,
-            ],
-            [cardStats.newCount, cardStats.youngCount, cardStats.matureCount],
-            t("CARD_TYPES_SUMMARY", { totalCardsCount }),
-        );
 
-        const noteEases = mapRecord(
-            SrsAlgorithm.getInstance().noteStats().dict,
-            (key: string, value: number): [string, number] => [
-                path.parse(key).name,
-                Math.round(value),
-            ],
-        );
+        // Calculate streak
+        const { currentStreak, longestStreak } = this.calculateStreaks();
 
-        this.noteStatsGrid = new Grid({
-            columns: [
-                {
-                    name: t("NOTE"),
-                },
-                {
-                    name: t("EASE"),
-                    sort: true,
-                    width: "200px",
-                },
-            ],
-            search: true,
-            autoWidth: false,
-            data: Object.entries(noteEases).sort((a, b) => b[1] - a[1]),
-            pagination: {
-                limit: 10,
-                summary: false,
-            },
-            language: {
-                search: {
-                    placeholder: t("SEARCH"),
-                },
-                pagination: {
-                    previous: t("PREVIOUS"),
-                    next: t("NEXT"),
-                },
-            },
-        });
-        this.noteStatsGrid.render(document.getElementById("noteStats"));
+        // Total reviews from history
+        const totalReviews = Object.values(this.reviewHistory).reduce((a, b) => a + b, 0);
+
+        // Reviews today
+        const today = window.moment().format("YYYY-MM-DD");
+        const reviewsToday = this.reviewHistory[today] || 0;
+
+        const summaryEl = this.containerEl.createDiv("sr-stats-summary");
+
+        this.createSummaryCard(summaryEl, reviewsToday.toString(), "Today");
+        this.createSummaryCard(summaryEl, totalReviews.toString(), "Total Reviews");
+        this.createSummaryCard(summaryEl, `${currentStreak}d`, "Current Streak");
+        this.createSummaryCard(summaryEl, `${longestStreak}d`, "Best Streak");
+        this.createSummaryCard(summaryEl, totalCards.toString(), "Total Cards");
+        this.createSummaryCard(
+            summaryEl,
+            `${cardStats.newCount} / ${cardStats.youngCount} / ${cardStats.matureCount}`,
+            "New / Young / Mature",
+        );
+    }
+
+    private createSummaryCard(parent: HTMLElement, value: string, label: string): void {
+        const card = parent.createDiv("sr-stats-card");
+        const valueEl = card.createDiv("sr-stats-card-value");
+        valueEl.setText(value);
+        const labelEl = card.createDiv("sr-stats-card-label");
+        labelEl.setText(label);
+    }
+
+    private renderHeatmap(): void {
+        const heatmapContainer = this.containerEl.createDiv("sr-heatmap-container");
+
+        const titleEl = heatmapContainer.createDiv("sr-heatmap-title");
+        titleEl.setText("Review Activity");
+
+        const heatmapWrapper = heatmapContainer.createDiv("sr-heatmap-wrapper");
+
+        // Day labels column
+        const dayLabels = heatmapWrapper.createDiv("sr-heatmap-day-labels");
+        const dayNames = ["", "Mon", "", "Wed", "", "Fri", ""];
+        for (const day of dayNames) {
+            const label = dayLabels.createDiv("sr-heatmap-day-label");
+            label.setText(day);
+        }
+
+        // Scrollable heatmap grid area
+        const scrollContainer = heatmapWrapper.createDiv("sr-heatmap-scroll");
+        const gridArea = scrollContainer.createDiv("sr-heatmap-grid-area");
+
+        // Month labels
+        const monthLabels = gridArea.createDiv("sr-heatmap-month-labels");
+
+        // The grid
+        const grid = gridArea.createDiv("sr-heatmap-grid");
+
+        // Calculate date range: last 365 days
+        const today = window.moment();
+        const startDate = window.moment().subtract(364, "days");
+
+        // Adjust start to a Sunday for clean columns
+        while (startDate.day() !== 0) {
+            startDate.subtract(1, "day");
+        }
+
+        // Find max review count for color scaling
+        const maxReviews = Math.max(1, ...Object.values(this.reviewHistory));
+
+        // Track months for labels
+        let currentMonth = -1;
+        let weekIndex = 0;
+
+        const cursor = startDate.clone();
+        while (cursor.isSameOrBefore(today)) {
+            // Check if we're starting a new week (Sunday)
+            if (cursor.day() === 0) {
+                // Check for new month
+                if (cursor.month() !== currentMonth) {
+                    currentMonth = cursor.month();
+                    const monthLabel = monthLabels.createDiv("sr-heatmap-month-label");
+                    monthLabel.setText(cursor.format("MMM"));
+                    monthLabel.style.gridColumnStart = (weekIndex + 1).toString();
+                }
+                weekIndex++;
+            }
+
+            const dateStr = cursor.format("YYYY-MM-DD");
+            const count = this.reviewHistory[dateStr] || 0;
+            const level = this.getHeatmapLevel(count, maxReviews);
+
+            const cell = grid.createDiv("sr-heatmap-cell");
+            cell.addClass(`sr-heatmap-level-${level}`);
+            cell.setAttribute(
+                "aria-label",
+                `${count} review${count !== 1 ? "s" : ""} on ${cursor.format("MMM D, YYYY")}`,
+            );
+            cell.setAttribute("aria-label-position", "top");
+
+            cursor.add(1, "day");
+        }
+
+        // Legend
+        const legendContainer = heatmapContainer.createDiv("sr-heatmap-legend");
+        const lessLabel = legendContainer.createDiv("sr-heatmap-legend-label");
+        lessLabel.setText("Less");
+        for (let i = 0; i <= 4; i++) {
+            const cell = legendContainer.createDiv("sr-heatmap-cell");
+            cell.addClass(`sr-heatmap-level-${i}`);
+        }
+        const moreLabel = legendContainer.createDiv("sr-heatmap-legend-label");
+        moreLabel.setText("More");
+
+        // Scroll to the right (most recent) after render
+        setTimeout(() => {
+            scrollContainer.scrollLeft = scrollContainer.scrollWidth;
+        }, 0);
+    }
+
+    private getHeatmapLevel(count: number, maxReviews: number): number {
+        if (count === 0) return 0;
+        if (maxReviews <= 4) return count; // When max is small, direct mapping
+        const ratio = count / maxReviews;
+        if (ratio <= 0.25) return 1;
+        if (ratio <= 0.5) return 2;
+        if (ratio <= 0.75) return 3;
+        return 4;
+    }
+
+    private calculateStreaks(): { currentStreak: number; longestStreak: number } {
+        let currentStreak = 0;
+        let longestStreak = 0;
+        let tempStreak = 0;
+
+        const today = window.moment();
+        const cursor = today.clone();
+
+        // Check if today has reviews; if not, start from yesterday
+        const todayStr = cursor.format("YYYY-MM-DD");
+        if (!this.reviewHistory[todayStr] || this.reviewHistory[todayStr] === 0) {
+            cursor.subtract(1, "day");
+        }
+
+        // Count current streak backwards
+        while (true) {
+            const dateStr = cursor.format("YYYY-MM-DD");
+            if (this.reviewHistory[dateStr] && this.reviewHistory[dateStr] > 0) {
+                currentStreak++;
+                cursor.subtract(1, "day");
+            } else {
+                break;
+            }
+        }
+
+        // Calculate longest streak with gap detection
+        const dates = Object.keys(this.reviewHistory)
+            .filter((d) => this.reviewHistory[d] > 0)
+            .sort();
+
+        if (dates.length > 0) {
+            let prevDate = window.moment(dates[0]);
+            tempStreak = 1;
+            longestStreak = 1;
+
+            for (let i = 1; i < dates.length; i++) {
+                const currDate = window.moment(dates[i]);
+                const diff = currDate.diff(prevDate, "days");
+                if (diff === 1) {
+                    tempStreak++;
+                } else {
+                    tempStreak = 1;
+                }
+                longestStreak = Math.max(longestStreak, tempStreak);
+                prevDate = currDate;
+            }
+        }
+
+        return { currentStreak, longestStreak };
     }
 
     destroy(): void {
-        this.forecastChart.destroy();
-        this.intervalsChart.destroy();
-        this.easesChart.destroy();
-        this.cardTypesChart.destroy();
-        this.noteStatsGrid.destroy();
+        // No chart instances to destroy anymore
     }
-}
-
-function createStatsChart(
-    type: keyof ChartTypeRegistry,
-    canvasId: string,
-    title: string,
-    subtitle: string,
-    labels: string[],
-    data: number[],
-    summary: string,
-    seriesTitle = "",
-    xAxisTitle = "",
-    yAxisTitle = "",
-): Chart {
-    const style = getComputedStyle(document.body);
-    const textColor = style.getPropertyValue("--text-normal");
-
-    let scales = {},
-        backgroundColor = ["#2196f3"];
-    if (type !== "pie") {
-        scales = {
-            x: {
-                title: {
-                    display: true,
-                    text: xAxisTitle,
-                    color: textColor,
-                },
-            },
-            y: {
-                title: {
-                    display: true,
-                    text: yAxisTitle,
-                    color: textColor,
-                },
-            },
-        };
-    } else {
-        backgroundColor = ["#2196f3", "#4caf50", "green"];
-    }
-
-    const shouldFilter = canvasId === "forecastChart" || canvasId === "intervalsChart";
-
-    const statsChart = new Chart(document.getElementById(canvasId) as HTMLCanvasElement, {
-        type,
-        data: {
-            labels: shouldFilter ? labels.slice(0, 31) : labels,
-            datasets: [
-                {
-                    label: seriesTitle,
-                    backgroundColor,
-                    data: shouldFilter ? data.slice(0, 31) : data,
-                },
-            ],
-        },
-        options: {
-            scales,
-            plugins: {
-                title: {
-                    display: true,
-                    text: title,
-                    font: {
-                        size: 22,
-                    },
-                    color: textColor,
-                },
-                subtitle: {
-                    display: true,
-                    text: subtitle,
-                    font: {
-                        size: 16,
-                        style: "italic",
-                    },
-                    color: textColor,
-                },
-                legend: {
-                    display: false,
-                },
-            },
-            aspectRatio: 2,
-        },
-    });
-
-    if (shouldFilter) {
-        const chartPeriodEl = document.getElementById("sr-chart-period") as HTMLSelectElement;
-        chartPeriodEl.addEventListener("click", () => {
-            let filteredLabels, filteredData;
-            const chartPeriod = chartPeriodEl.value;
-            if (chartPeriod === "month") {
-                filteredLabels = labels.slice(0, 31);
-                filteredData = data.slice(0, 31);
-            } else if (chartPeriod === "quarter") {
-                filteredLabels = labels.slice(0, 91);
-                filteredData = data.slice(0, 91);
-            } else if (chartPeriod === "year") {
-                filteredLabels = labels.slice(0, 366);
-                filteredData = data.slice(0, 366);
-            } else {
-                filteredLabels = labels;
-                filteredData = data;
-            }
-
-            statsChart.data.labels = filteredLabels;
-            statsChart.data.datasets[0] = {
-                label: seriesTitle,
-                backgroundColor,
-                data: filteredData,
-            };
-            statsChart.update();
-        });
-    }
-
-    document.getElementById(`${canvasId}Summary`).innerText = summary;
-
-    return statsChart;
 }
