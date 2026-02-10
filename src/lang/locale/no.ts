@@ -1,3 +1,1 @@
-// Norsk
-
 export default {};

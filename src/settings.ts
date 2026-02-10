@@ -49,6 +49,10 @@ export interface SRSettings {
     reviewButtonDelay: number;
     openViewInNewTab: boolean;
 
+    // image occlusion
+    imageOcclusionMaskColor: string;
+    imageOcclusionDefaultMode: string;
+
     // algorithm
     algorithm: string;
     baseEase: number;
@@ -115,6 +119,10 @@ export const DEFAULT_SETTINGS: SRSettings = {
     flashcardAgainText: t("AGAIN"),
     reviewButtonDelay: 0,
     openViewInNewTab: false,
+
+    // image occlusion
+    imageOcclusionMaskColor: "#ff6b35",
+    imageOcclusionDefaultMode: "hideAllRevealOne",
 
     // algorithm
     algorithm: Algorithm.SM_2_OSR,

@@ -178,6 +178,33 @@ export function parse(text: string, options: ParserOptions): ParsedQuestionInfo[
                 // Pick up multiline basic cards
                 cardType = CardType.MultiLineReversed;
             }
+        } else if (currentTrimmed === "```sr-occlusion") {
+            // Pick up image occlusion blocks
+            const occlusionStart = i;
+            let occlusionText = currentLine;
+            i++;
+            while (i < lines.length && !lines[i].trim().startsWith("```")) {
+                occlusionText += "\n" + lines[i];
+                i++;
+            }
+            if (i < lines.length) {
+                occlusionText += "\n" + lines[i]; // closing ```
+            }
+
+            // Pick up scheduling information if present on the next line
+            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR")) {
+                occlusionText += "\n" + lines[i + 1];
+                i++;
+            }
+
+            cards.push(
+                new ParsedQuestionInfo(CardType.ImageOcclusion, occlusionText, occlusionStart, i),
+            );
+
+            // Reset state for next card
+            cardType = null;
+            cardText = "";
+            firstLineNo = i + 1;
         } else if (currentLine.startsWith("```") || currentLine.startsWith("~~~")) {
             // Pick up codeblocks
             const codeBlockClose = currentLine.match(/`+|~+/)[0];

@@ -856,6 +856,35 @@ export class SRSettingTab extends PluginSettingTab {
                         this.display();
                     });
             });
+
+        // Image Occlusion section
+        containerEl.createEl("h3", { text: t("IMAGE_OCCLUSION") });
+
+        new Setting(containerEl)
+            .setName(t("IMAGE_OCCLUSION_DEFAULT_MODE"))
+            .setDesc(t("IMAGE_OCCLUSION_DEFAULT_MODE_DESC"))
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption("hideAllRevealOne", t("IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE"))
+                    .addOption("stagedReveal", t("IMAGE_OCCLUSION_STAGED_REVEAL"))
+                    .setValue(this.plugin.data.settings.imageOcclusionDefaultMode)
+                    .onChange(async (value) => {
+                        this.plugin.data.settings.imageOcclusionDefaultMode = value;
+                        await this.plugin.savePluginData();
+                    }),
+            );
+
+        new Setting(containerEl)
+            .setName(t("IMAGE_OCCLUSION_MASK_COLOR"))
+            .setDesc(t("IMAGE_OCCLUSION_MASK_COLOR_DESC"))
+            .addColorPicker((picker) =>
+                picker
+                    .setValue(this.plugin.data.settings.imageOcclusionMaskColor)
+                    .onChange(async (value) => {
+                        this.plugin.data.settings.imageOcclusionMaskColor = value;
+                        await this.plugin.savePluginData();
+                    }),
+            );
     }
 
     private async tabScheduling(containerEl: HTMLElement): Promise<void> {

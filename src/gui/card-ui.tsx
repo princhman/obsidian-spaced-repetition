@@ -13,7 +13,9 @@ import {
     FlashcardReviewMode,
     IFlashcardReviewSequencer as IFlashcardReviewSequencer,
 } from "src/flashcard-review-sequencer";
+import { ImageOcclusionRenderer } from "src/gui/image-occlusion-renderer";
 import { FlashcardMode } from "src/gui/sr-modal";
+import { decodeIOCardString, IOCardData, isIOCardString, OcclusionMode } from "src/image-occlusion";
 import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
 import { Note } from "src/note";
@@ -90,6 +92,11 @@ export class CardUI {
     private backToDeck: () => void;
     private editClickHandler: () => void;
     private closeHandler: () => void;
+
+    // Image occlusion state
+    private _ioCardData: IOCardData | null = null;
+    private _ioStagedRevealCount: number = 0;
+    private _ioContainer: HTMLElement | null = null;
 
     constructor(
         app: App,
@@ -210,22 +217,85 @@ export class CardUI {
 
         // Update card content
         this.content.empty();
-        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
-            this.app,
-            this.plugin,
-            this._currentNote.filePath,
-        );
+        this._ioCardData = null;
+        this._ioContainer = null;
+        this._ioStagedRevealCount = 0;
 
-        await wrapper.renderMarkdownWrapper(
-            this._currentCard.front.trimStart(),
-            this.content,
-            this._currentQuestion.questionText.textDirection,
-        );
+        if (isIOCardString(this._currentCard.front)) {
+            this._ioCardData = decodeIOCardString(this._currentCard.front);
+            if (this._ioCardData) {
+                this._renderIOFront(this._ioCardData);
+            }
+        } else {
+            const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+                this.app,
+                this.plugin,
+                this._currentNote.filePath,
+            );
+
+            await wrapper.renderMarkdownWrapper(
+                this._currentCard.front.trimStart(),
+                this.content,
+                this._currentQuestion.questionText.textDirection,
+            );
+        }
         // Set scroll position back to top
         this.content.scrollTop = 0;
 
         // Update response buttons
         this._resetResponseButtons();
+
+        // For staged reveal, change "Show Answer" button text
+        if (
+            this._ioCardData &&
+            this._ioCardData.occlusionData.mode === OcclusionMode.StagedReveal
+        ) {
+            this.answerButton.setText(t("IMAGE_OCCLUSION_REVEAL_NEXT"));
+        }
+    }
+
+    private _renderIOFront(ioData: IOCardData): void {
+        const imageUrl = this._resolveIOImageUrl(ioData.occlusionData.imagePath);
+        const maskColor = this.settings.imageOcclusionMaskColor ?? "#ff6b35";
+
+        // On front, all rects are hidden (no reveals)
+        this._ioContainer = ImageOcclusionRenderer.render(
+            this.content,
+            imageUrl,
+            ioData.occlusionData.rects,
+            new Set(),
+            maskColor,
+        );
+    }
+
+    private _resolveIOImageUrl(imagePath: string): string {
+        // Parse ![[filename]] or ![alt](path) syntax
+        let filePath: string;
+
+        const wikiMatch = imagePath.match(/!\[\[([^\]]+)\]\]/);
+        if (wikiMatch) {
+            filePath = wikiMatch[1];
+            // Strip size suffix like |400
+            const pipeIdx = filePath.indexOf("|");
+            if (pipeIdx !== -1) filePath = filePath.substring(0, pipeIdx);
+        } else {
+            const mdMatch = imagePath.match(/!\[.*?\]\((.+?)\)/);
+            if (mdMatch) {
+                filePath = mdMatch[1];
+            } else {
+                filePath = imagePath;
+            }
+        }
+
+        const target = this.app.metadataCache.getFirstLinkpathDest(
+            filePath,
+            this._currentNote.filePath,
+        );
+        if (target) {
+            return this.app.vault.getResourcePath(target);
+        }
+        // Fallback: use the path directly
+        return filePath;
     }
 
     private get _currentCard(): Card {
@@ -648,28 +718,82 @@ export class CardUI {
         }
         this.lastPressed = timeNow;
 
-        this.mode = FlashcardMode.Back;
+        // Handle staged reveal for image occlusion
+        if (
+            this._ioCardData &&
+            this._ioCardData.occlusionData.mode === OcclusionMode.StagedReveal
+        ) {
+            const rects = this._ioCardData.occlusionData.rects;
+            if (this._ioStagedRevealCount < rects.length) {
+                // Reveal the next rectangle
+                const rect = rects[this._ioStagedRevealCount];
+                if (this._ioContainer) {
+                    ImageOcclusionRenderer.revealRect(
+                        this._ioContainer,
+                        this._ioStagedRevealCount,
+                        rect.label,
+                    );
+                }
+                this._ioStagedRevealCount++;
 
-        this.resetButton.disabled = false;
-
-        // Show answer text
-        if (this._currentQuestion.questionType !== CardType.Cloze) {
-            const hr: HTMLElement = document.createElement("hr");
-            this.content.appendChild(hr);
-        } else {
+                // If all revealed, show response buttons
+                if (this._ioStagedRevealCount >= rects.length) {
+                    this.mode = FlashcardMode.Back;
+                    this.resetButton.disabled = false;
+                    this.answerButton.setText(t("SHOW_ANSWER"));
+                    // Fall through to show response buttons below
+                } else {
+                    // More rects to reveal, stay in front mode
+                    return;
+                }
+            }
+        } else if (this._ioCardData) {
+            // HideAllRevealOne: re-render with current rect revealed
+            this.mode = FlashcardMode.Back;
+            this.resetButton.disabled = false;
             this.content.empty();
-        }
 
-        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
-            this.app,
-            this.plugin,
-            this._currentNote.filePath,
-        );
-        wrapper.renderMarkdownWrapper(
-            this._currentCard.back,
-            this.content,
-            this._currentQuestion.questionText.textDirection,
-        );
+            const imageUrl = this._resolveIOImageUrl(this._ioCardData.occlusionData.imagePath);
+            const maskColor = this.settings.imageOcclusionMaskColor ?? "#ff6b35";
+            const revealedSet = new Set([this._ioCardData.cardIndex]);
+
+            this._ioContainer = ImageOcclusionRenderer.render(
+                this.content,
+                imageUrl,
+                this._ioCardData.occlusionData.rects,
+                revealedSet,
+                maskColor,
+            );
+
+            // Show label below image if available
+            const revealedRect = this._ioCardData.occlusionData.rects[this._ioCardData.cardIndex];
+            if (revealedRect?.label) {
+                const labelDiv = this.content.createDiv({ cls: "sr-io-answer-label" });
+                labelDiv.setText(revealedRect.label);
+            }
+        } else {
+            this.mode = FlashcardMode.Back;
+            this.resetButton.disabled = false;
+
+            // Show answer text
+            if (this._currentQuestion.questionType !== CardType.Cloze) {
+                const hr: HTMLElement = document.createElement("hr");
+                this.content.appendChild(hr);
+            } else {
+                this.content.empty();
+            }
+
+            const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+                this.app,
+                this.plugin,
+                this._currentNote.filePath,
+            );
+            wrapper.renderMarkdownWrapper(
+                this._currentCard.back,
+                this.content,
+                this._currentQuestion.questionText.textDirection,
+            );
+        }
 
         // Show response buttons
         this.answerButton.addClass("sr-is-hidden");

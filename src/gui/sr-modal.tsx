@@ -8,9 +8,15 @@ import {
 import { CardUI } from "src/gui/card-ui";
 import { DeckUI } from "src/gui/deck-ui";
 import { FlashcardEditModal } from "src/gui/edit-modal";
+import { ImageOcclusionEditorModal } from "src/gui/image-occlusion-editor";
+import {
+    extractOcclusionBlockContent,
+    parseOcclusionBlock,
+    serializeOcclusionCodeBlock,
+} from "src/image-occlusion";
 import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
-import { Question } from "src/question";
+import { CardType, Question } from "src/question";
 import { SRSettings } from "src/settings";
 
 export enum FlashcardMode {
@@ -130,6 +136,11 @@ export class FlashcardModal extends Modal {
     private async _doEditQuestionText(): Promise<void> {
         const currentQ: Question = this.reviewSequencer.currentQuestion;
 
+        if (currentQ.questionType === CardType.ImageOcclusion) {
+            await this._doEditImageOcclusion(currentQ);
+            return;
+        }
+
         // Just the question/answer text; without any preceding topic tag
         const textPrompt = currentQ.questionText.actualQuestion;
 
@@ -143,6 +154,43 @@ export class FlashcardModal extends Modal {
                 this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
             })
             .catch((reason) => console.log(reason));
+    }
+
+    private async _doEditImageOcclusion(question: Question): Promise<void> {
+        const questionText = question.questionText.actualQuestion;
+        const blockContent = extractOcclusionBlockContent(questionText);
+        if (!blockContent) return;
+
+        const existingData = parseOcclusionBlock(blockContent);
+        if (!existingData) return;
+
+        // Resolve image URL
+        let imageUrl: string;
+        const wikiMatch = existingData.imagePath.match(/!\[\[([^\]|]+)/);
+        const mdMatch = existingData.imagePath.match(/!\[.*?\]\((.+?)\)/);
+        const filePath = wikiMatch ? wikiMatch[1] : mdMatch ? mdMatch[1] : existingData.imagePath;
+
+        const target = this.app.metadataCache.getFirstLinkpathDest(
+            filePath,
+            question.note.filePath,
+        );
+        if (target) {
+            imageUrl = this.app.vault.getResourcePath(target);
+        } else {
+            imageUrl = filePath;
+        }
+
+        const result = await ImageOcclusionEditorModal.Prompt(
+            this.app,
+            imageUrl,
+            existingData.imagePath,
+            existingData,
+        );
+
+        if (result) {
+            const newCodeBlock = serializeOcclusionCodeBlock(result);
+            this.reviewSequencer.updateCurrentQuestionText(newCodeBlock);
+        }
     }
 
     private _createBackButton() {

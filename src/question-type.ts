@@ -1,5 +1,11 @@
 import { ClozeCrafter, IClozeFormatter } from "clozecraft";
 
+import {
+    encodeIOCardString,
+    extractOcclusionBlockContent,
+    OcclusionMode,
+    parseOcclusionBlock,
+} from "src/image-occlusion";
 import { CardType } from "src/question";
 import { SRSettings } from "src/settings";
 import { findLineIndexOfSearchStringIgnoringWs } from "src/utils/strings";
@@ -124,6 +130,30 @@ export class QuestionTypeClozeFormatter implements IClozeFormatter {
     }
 }
 
+class QuestionTypeImageOcclusion implements IQuestionTypeHandler {
+    expand(questionText: string): CardFrontBack[] {
+        const blockContent = extractOcclusionBlockContent(questionText);
+        if (!blockContent) return [];
+
+        const data = parseOcclusionBlock(blockContent);
+        if (!data) return [];
+
+        if (data.mode === OcclusionMode.HideAllRevealOne) {
+            // N rects -> N cards
+            return data.rects.map((_, idx) => {
+                const front = encodeIOCardString(data, idx);
+                const back = encodeIOCardString(data, idx);
+                return new CardFrontBack(front, back);
+            });
+        } else {
+            // Staged reveal: 1 card
+            const front = encodeIOCardString(data, -1);
+            const back = encodeIOCardString(data, -1);
+            return [new CardFrontBack(front, back)];
+        }
+    }
+}
+
 export class QuestionTypeFactory {
     static create(questionType: CardType): IQuestionTypeHandler {
         let handler: IQuestionTypeHandler;
@@ -142,6 +172,9 @@ export class QuestionTypeFactory {
                 break;
             case CardType.Cloze:
                 handler = new QuestionTypeCloze();
+                break;
+            case CardType.ImageOcclusion:
+                handler = new QuestionTypeImageOcclusion();
                 break;
         }
         return handler;

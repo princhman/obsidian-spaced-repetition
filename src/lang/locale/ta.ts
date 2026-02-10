@@ -1,3 +1,1 @@
-// Tamil
-
 export default {};
