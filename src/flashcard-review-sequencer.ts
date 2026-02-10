@@ -301,13 +301,15 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     }
 
     async processReviewReviewMode(response: ReviewResponse): Promise<void> {
-        if (response != ReviewResponse.Reset || this.currentCard.hasSchedule) {
+        const isResetAsReview = this.srsAlgorithm.isResetAsReview();
+        if (response != ReviewResponse.Reset || this.currentCard.hasSchedule || isResetAsReview) {
             const oldSchedule = this.currentCard.scheduleInfo;
 
             // We need to update the schedule if:
             //  (1) the user reviewed with easy/good/hard (either a new or due card),
-            //  (2) or reset a due card
-            // Nothing to do if a user resets a new card
+            //  (2) or reset a due card (SM-2)
+            //  (3) or the algorithm treats reset as a review (FSRS "Again")
+            // Nothing to do if a user resets a new card in SM-2 mode
             this.currentCard.scheduleInfo = this.determineCardSchedule(response, this.currentCard);
 
             // Update the source file with the updated schedule
@@ -360,11 +362,11 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     determineCardSchedule(response: ReviewResponse, card: Card): RepItemScheduleInfo {
         let result: RepItemScheduleInfo;
 
-        if (response == ReviewResponse.Reset) {
-            // Resetting the card schedule
+        if (response == ReviewResponse.Reset && !this.srsAlgorithm.isResetAsReview()) {
+            // SM-2: Resetting the card schedule to a blank state
             result = this.srsAlgorithm.cardGetResetSchedule();
         } else {
-            // scheduled card
+            // Normal review (Easy/Good/Hard), or FSRS "Again" which is treated as a review
             if (card.hasSchedule) {
                 result = this.srsAlgorithm.cardCalcUpdatedSchedule(
                     response,

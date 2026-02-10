@@ -45,6 +45,7 @@ export interface SRSettings {
     flashcardEasyText: string;
     flashcardGoodText: string;
     flashcardHardText: string;
+    flashcardAgainText: string;
     reviewButtonDelay: number;
     openViewInNewTab: boolean;
 
@@ -111,6 +112,7 @@ export const DEFAULT_SETTINGS: SRSettings = {
     flashcardEasyText: t("EASY"),
     flashcardGoodText: t("GOOD"),
     flashcardHardText: t("HARD"),
+    flashcardAgainText: t("AGAIN"),
     reviewButtonDelay: 0,
     openViewInNewTab: false,
 

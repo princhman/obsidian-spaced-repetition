@@ -1,11 +1,13 @@
 import { now } from "moment";
 import { App, Notice, Platform, setIcon } from "obsidian";
 
+import { Algorithm } from "src/algorithms/base/isrs-algorithm";
 import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { RepItemScheduleInfoFsrs } from "src/algorithms/fsrs/rep-item-schedule-info-fsrs";
 import { textInterval } from "src/algorithms/osr/note-scheduling";
 import { Card } from "src/card";
+import { TICKS_PER_DAY } from "src/constants";
 import { Deck } from "src/deck";
 import {
     FlashcardReviewMode,
@@ -67,6 +69,7 @@ export class CardUI {
     public disableButton: HTMLButtonElement;
 
     public response: HTMLDivElement;
+    public againButton: HTMLButtonElement;
     public hardButton: HTMLButtonElement;
     public goodButton: HTMLButtonElement;
     public easyButton: HTMLButtonElement;
@@ -521,6 +524,7 @@ export class CardUI {
 
     private _createResponseButtons() {
         this._createShowAnswerButton();
+        this._createAgainButton();
         this._createHardButton();
         this._createGoodButton();
         this._createEasyButton();
@@ -529,9 +533,13 @@ export class CardUI {
     private _resetResponseButtons() {
         // Sets all buttons in to their default state
         this.answerButton.removeClass("sr-is-hidden");
+        this.againButton.addClass("sr-is-hidden");
         this.hardButton.addClass("sr-is-hidden");
         this.goodButton.addClass("sr-is-hidden");
         this.easyButton.addClass("sr-is-hidden");
+
+        // Restore reset button visibility (may have been hidden for FSRS)
+        this.resetButton.removeClass("sr-is-hidden");
     }
 
     private _createShowAnswerButton() {
@@ -540,6 +548,20 @@ export class CardUI {
         this.answerButton.setText(t("SHOW_ANSWER"));
         this.answerButton.addEventListener("click", () => {
             this._showAnswer();
+        });
+    }
+
+    private _createAgainButton() {
+        this.againButton = this.response.createEl("button");
+        this.againButton.addClasses([
+            "sr-response-button",
+            "sr-again-button",
+            "sr-bg-orange",
+            "sr-is-hidden",
+        ]);
+        this.againButton.setText(this.settings.flashcardAgainText);
+        this.againButton.addEventListener("click", () => {
+            this._processReview(ReviewResponse.Reset);
         });
     }
 
@@ -594,7 +616,16 @@ export class CardUI {
             reviewResponse,
             this._currentCard,
         );
-        const interval: number = schedule.interval;
+        let interval: number = schedule.interval;
+
+        // For FSRS learning cards, scheduled_days is 0 but the real interval
+        // is embedded in the due date. Compute fractional days for display.
+        if (schedule instanceof RepItemScheduleInfoFsrs && interval === 0 && schedule.dueDate) {
+            const diffMs = schedule.dueDate.valueOf() - Date.now();
+            if (diffMs > 0) {
+                interval = diffMs / TICKS_PER_DAY;
+            }
+        }
 
         if (this.settings.showIntervalInReviewButtons) {
             if (Platform.isMobile) {
@@ -645,12 +676,26 @@ export class CardUI {
         this.hardButton.removeClass("sr-is-hidden");
         this.easyButton.removeClass("sr-is-hidden");
 
+        const isFsrs = this.settings.algorithm === Algorithm.FSRS;
+
         if (this.reviewMode === FlashcardReviewMode.Cram) {
             this.response.addClass("is-cram");
             this.hardButton.setText(`${this.settings.flashcardHardText}`);
             this.easyButton.setText(`${this.settings.flashcardEasyText}`);
         } else {
             this.goodButton.removeClass("sr-is-hidden");
+
+            if (isFsrs) {
+                // FSRS: show 4 buttons (Again, Hard, Good, Easy) and hide Reset icon
+                this.againButton.removeClass("sr-is-hidden");
+                this.resetButton.addClass("sr-is-hidden");
+                this._setupEaseButton(
+                    this.againButton,
+                    this.settings.flashcardAgainText,
+                    ReviewResponse.Reset,
+                );
+            }
+
             this._setupEaseButton(
                 this.hardButton,
                 this.settings.flashcardHardText,
@@ -684,6 +729,8 @@ export class CardUI {
             e.stopPropagation();
         };
 
+        const isFsrs = this.settings.algorithm === Algorithm.FSRS;
+
         switch (e.code) {
             case "KeyS":
                 this._skipCurrentCard();
@@ -711,7 +758,8 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Hard);
+                // FSRS: 1=Again, SM-2: 1=Hard
+                this._processReview(isFsrs ? ReviewResponse.Reset : ReviewResponse.Hard);
                 consumeKeyEvent();
                 break;
             case "Numpad2":
@@ -719,7 +767,8 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Good);
+                // FSRS: 2=Hard, SM-2: 2=Good
+                this._processReview(isFsrs ? ReviewResponse.Hard : ReviewResponse.Good);
                 consumeKeyEvent();
                 break;
             case "Numpad3":
@@ -727,16 +776,31 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Easy);
+                // FSRS: 3=Good, SM-2: 3=Easy
+                this._processReview(isFsrs ? ReviewResponse.Good : ReviewResponse.Easy);
                 consumeKeyEvent();
+                break;
+            case "Numpad4":
+            case "Digit4":
+                if (this.mode !== FlashcardMode.Back) {
+                    break;
+                }
+                // FSRS: 4=Easy (SM-2 doesn't use Digit4)
+                if (isFsrs) {
+                    this._processReview(ReviewResponse.Easy);
+                    consumeKeyEvent();
+                }
                 break;
             case "Numpad0":
             case "Digit0":
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Reset);
-                consumeKeyEvent();
+                // SM-2 only: 0=Reset (FSRS uses 1 for Again)
+                if (!isFsrs) {
+                    this._processReview(ReviewResponse.Reset);
+                    consumeKeyEvent();
+                }
                 break;
             default:
                 break;

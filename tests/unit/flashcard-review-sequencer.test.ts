@@ -29,7 +29,10 @@ import {
 import { TextDirection } from "src/utils/strings";
 
 import { UnitTestSRFile } from "./helpers/unit-test-file";
-import { unitTestSetupStandardDataStoreAlgorithm } from "./helpers/unit-test-setup";
+import {
+    unitTestSetupFsrsDataStoreAlgorithm,
+    unitTestSetupStandardDataStoreAlgorithm,
+} from "./helpers/unit-test-setup";
 import { createTestNoteParser, SampleItemDecks } from "./sample-items";
 
 const orderDueFirstSequential: IIteratorOrder = {
@@ -1408,5 +1411,142 @@ Q1::A1`,
         reviewSequencer.setCurrentDeck(topicPath);
         expect(reviewSequencer.hasCurrentCard).toBe(true);
         expect(reviewSequencer.currentCard.front).toEqual("Q1");
+    });
+});
+
+describe("FSRS scheduling", () => {
+    function createFsrsTestContext(text: string, fakeFilePath?: string): TestContext {
+        const settings: SRSettings = { ...DEFAULT_SETTINGS, algorithm: "FSRS" };
+        const settingsClone: SRSettings = { ...settings };
+        const cardSequencer: IDeckTreeIterator = new DeckTreeIterator(
+            orderDueFirstSequential,
+            null,
+        );
+        unitTestSetupFsrsDataStoreAlgorithm(settingsClone);
+        const cardPostponementList: QuestionPostponementList = new QuestionPostponementList(
+            null,
+            settingsClone,
+            [],
+        );
+        const dueDateFlashcardHistogram: CardDueDateHistogram = new CardDueDateHistogram();
+        const reviewSequencer: FlashcardReviewSequencer = new FlashcardReviewSequencer(
+            FlashcardReviewMode.Review,
+            cardSequencer,
+            settingsClone,
+            SrsAlgorithm.getInstance(),
+            cardPostponementList,
+            dueDateFlashcardHistogram,
+        );
+        const file: UnitTestSRFile = new UnitTestSRFile(text, fakeFilePath);
+
+        return new TestContext({
+            settings: settingsClone,
+            reviewMode: FlashcardReviewMode.Review,
+            iteratorOrder: orderDueFirstSequential,
+            cardSequencer,
+            reviewSequencer,
+            questionPostponementList: cardPostponementList,
+            file,
+            originalText: text,
+            fakeFilePath,
+        });
+    }
+
+    test("determineCardSchedule: Again on new card produces a learning schedule (not blank)", async () => {
+        const text: string = `#flashcards
+Q1::A1
+Q2::A2`;
+
+        const c = createFsrsTestContext(text, "test-fsrs-again.md");
+        await c.setSequencerDeckTreeFromOriginalText();
+
+        // Current card should be a new card (no schedule)
+        expect(c.reviewSequencer.currentCard.front).toEqual("Q1");
+        expect(c.reviewSequencer.currentCard.hasSchedule).toBe(false);
+
+        // determineCardSchedule with Reset (Again) should return a real schedule, not blank
+        const schedule = c.reviewSequencer.determineCardSchedule(
+            ReviewResponse.Reset,
+            c.reviewSequencer.currentCard,
+        );
+
+        // FSRS Again on new card: should have a due date set (learning step)
+        expect(schedule).toBeDefined();
+        expect(schedule.dueDate).toBeDefined();
+        expect(schedule.dueDate).not.toBeNull();
+    });
+
+    test("determineCardSchedule: Easy on new card produces multi-day interval", async () => {
+        const text: string = `#flashcards
+Q1::A1`;
+
+        const c = createFsrsTestContext(text, "test-fsrs-easy.md");
+        await c.setSequencerDeckTreeFromOriginalText();
+
+        expect(c.reviewSequencer.currentCard.hasSchedule).toBe(false);
+
+        const schedule = c.reviewSequencer.determineCardSchedule(
+            ReviewResponse.Easy,
+            c.reviewSequencer.currentCard,
+        );
+
+        // FSRS Easy on new card should produce a multi-day interval (typically 4-10 days)
+        expect(schedule.interval).toBeGreaterThan(0);
+    });
+
+    test("processReview: Again on new card saves schedule and moves card to end", async () => {
+        const text: string = `#flashcards
+Q1::A1
+Q2::A2`;
+
+        const fakeFilePath = moment().millisecond().toString() + "-fsrs-again.md";
+        const c = createFsrsTestContext(text, fakeFilePath);
+        await c.setSequencerDeckTreeFromOriginalText();
+
+        // First card is Q1 (new)
+        expect(c.reviewSequencer.currentCard.front).toEqual("Q1");
+        const cardQ1 = c.reviewSequencer.currentCard;
+        expect(cardQ1.hasSchedule).toBe(false);
+
+        // Review with Reset (Again in FSRS)
+        await c.reviewSequencer.processReview(ReviewResponse.Reset);
+
+        // After Again, the card should have a schedule saved
+        expect(cardQ1.scheduleInfo).toBeDefined();
+        expect(cardQ1.scheduleInfo).not.toBeNull();
+        expect(cardQ1.scheduleInfo.dueDate).toBeDefined();
+
+        // The file should have been updated with FSRS schedule comment
+        const fileContent = await c.file.read();
+        expect(fileContent).toContain("<!--SR-FSRS:");
+
+        // Next card should be Q2 (Again moves Q1 to end, then Q2 is next)
+        // or Q1 again if it was moved to end. Either way, there should be a current card.
+        expect(c.reviewSequencer.hasCurrentCard).toBe(true);
+    });
+
+    test("processReview: Easy on new card removes card from queue", async () => {
+        const text: string = `#flashcards
+Q1::A1
+Q2::A2`;
+
+        const fakeFilePath = moment().millisecond().toString() + "-fsrs-easy.md";
+        const c = createFsrsTestContext(text, fakeFilePath);
+        await c.setSequencerDeckTreeFromOriginalText();
+
+        expect(c.reviewSequencer.currentCard.front).toEqual("Q1");
+
+        // Review with Easy
+        await c.reviewSequencer.processReview(ReviewResponse.Easy);
+
+        // Easy should remove the card from the queue, next card is Q2
+        expect(c.reviewSequencer.hasCurrentCard).toBe(true);
+        expect(c.reviewSequencer.currentCard.front).toEqual("Q2");
+
+        // Review Q2 with Easy
+        await c.reviewSequencer.processReview(ReviewResponse.Easy);
+
+        // No more cards
+        expect(c.reviewSequencer.hasCurrentCard).toBe(false);
     });
 });

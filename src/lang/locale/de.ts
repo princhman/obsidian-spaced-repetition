@@ -13,6 +13,7 @@ export default {
     SKIP: "Überspringen",
     EDIT_CARD: "Karte bearbeiten",
     RESET_CARD_PROGRESS: "Kartenfortschritt zurücksetzten",
+    AGAIN: "",
     HARD: "Schwer",
     GOOD: "Gut",
     EASY: "Einfach",
@@ -49,9 +50,13 @@ export default {
     ALL_CAUGHT_UP: "Yuhu! Alles geschafft! :D.",
 
     // scheduling.ts
+    MINUTES_STR_IVL: "",
+    HOURS_STR_IVL: "",
     DAYS_STR_IVL: "${interval} Tag(e)",
     MONTHS_STR_IVL: "${interval} Monat(e)",
     YEARS_STR_IVL: "${interval} Jahr(e)",
+    MINUTES_STR_IVL_MOBILE: "",
+    HOURS_STR_IVL_MOBILE: "",
     DAYS_STR_IVL_MOBILE: "${interval}t",
     MONTHS_STR_IVL_MOBILE: "${interval}m",
     YEARS_STR_IVL_MOBILE: "${interval}j",
@@ -87,6 +92,8 @@ export default {
     FLASHCARD_GOOD_DESC: 'Passe die Beschriftung für "Gut" Knopf an',
     FLASHCARD_EASY_DESC: 'Passe die Beschriftung für "Einfach" Knopf an',
     FLASHCARD_HARD_DESC: 'Passe die Beschriftung für "Schwer" Knopf an',
+    FLASHCARD_AGAIN_LABEL: "",
+    FLASHCARD_AGAIN_DESC: "",
     REVIEW_BUTTON_DELAY: "Druckknopfverzögerung (ms)",
     REVIEW_BUTTON_DELAY_DESC:
         "Fügt den Überprüfungsschaltflächen („Einfach“, „Gut“, „Schwer“, „Antwort anzeigen“) eine Verzögerung hinzu, bevor sie erneut gedrückt werden können.",

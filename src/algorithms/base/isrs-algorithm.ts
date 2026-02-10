@@ -26,6 +26,9 @@ export interface ISrsAlgorithm {
     ): RepItemScheduleInfo;
     noteStats(): INoteEaseList;
 
+    // Returns true if the algorithm treats "Reset" as a regular review response (e.g. FSRS "Again")
+    // rather than resetting to a blank card (SM-2 behavior).
+    isResetAsReview(): boolean;
     cardGetResetSchedule(): RepItemScheduleInfo;
     cardGetNewSchedule(
         response: ReviewResponse,

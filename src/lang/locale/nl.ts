@@ -10,6 +10,7 @@ export default {
     SKIP: "Overslaan",
     EDIT_CARD: "Kaart bewerken",
     RESET_CARD_PROGRESS: "Voortgang van kaart resetten",
+    AGAIN: "",
     HARD: "Moeilijk",
     GOOD: "Goed",
     EASY: "Gemakkelijk",
@@ -45,9 +46,13 @@ export default {
     ALL_CAUGHT_UP: "Je bent nu helemaal bij :D.",
 
     // scheduling.ts
+    MINUTES_STR_IVL: "",
+    HOURS_STR_IVL: "",
     DAYS_STR_IVL: "${interval} dag(en)",
     MONTHS_STR_IVL: "${interval} maand(en)",
     YEARS_STR_IVL: "${interval} jaar",
+    MINUTES_STR_IVL_MOBILE: "",
+    HOURS_STR_IVL_MOBILE: "",
     DAYS_STR_IVL_MOBILE: "${interval}d",
     MONTHS_STR_IVL_MOBILE: "${interval}m",
     YEARS_STR_IVL_MOBILE: "${interval}j",
@@ -83,6 +88,8 @@ export default {
     FLASHCARD_EASY_DESC: 'Pas het label aan voor de "Gemakkelijk" knop',
     FLASHCARD_GOOD_DESC: 'Pas het label aan voor de "Goed" knop',
     FLASHCARD_HARD_DESC: 'Pas het label aan voor de "Moeilijk" knop',
+    FLASHCARD_AGAIN_LABEL: "",
+    FLASHCARD_AGAIN_DESC: "",
     REVIEW_BUTTON_DELAY: "Vertraging knopindrukken (ms)",
     REVIEW_BUTTON_DELAY_DESC:
         "Voeg een vertraging toe aan de beoordelingsknoppen voordat ze opnieuw kunnen worden ingedrukt.",

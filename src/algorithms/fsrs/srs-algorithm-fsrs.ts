@@ -75,6 +75,10 @@ export class SrsAlgorithmFsrs implements ISrsAlgorithm {
         return this.fsrsCardToScheduleInfo(result.card);
     }
 
+    isResetAsReview(): boolean {
+        return true;
+    }
+
     cardGetResetSchedule(): RepItemScheduleInfo {
         const emptyCard = createEmptyCard();
         const dueDate: Moment = moment(globalDateProvider.today);

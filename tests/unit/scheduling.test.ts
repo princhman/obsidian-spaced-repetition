@@ -253,6 +253,32 @@ test("Test textInterval - mobile", () => {
     expect(textInterval(1000, true)).toEqual("2.7y");
 });
 
+test("Test textInterval - sub-day intervals (FSRS learning steps) - desktop", () => {
+    // 1 minute = 1/(24*60) days ≈ 0.000694
+    expect(textInterval(1 / (24 * 60), false)).toEqual("1 min(s)");
+    // 6 minutes
+    expect(textInterval(6 / (24 * 60), false)).toEqual("6 min(s)");
+    // 10 minutes
+    expect(textInterval(10 / (24 * 60), false)).toEqual("10 min(s)");
+    // 30 minutes
+    expect(textInterval(30 / (24 * 60), false)).toEqual("30 min(s)");
+    // 1 hour
+    expect(textInterval(1 / 24, false)).toEqual("1 hour(s)");
+    // 4 hours
+    expect(textInterval(4 / 24, false)).toEqual("4 hour(s)");
+    // 12 hours
+    expect(textInterval(12 / 24, false)).toEqual("12 hour(s)");
+});
+
+test("Test textInterval - sub-day intervals (FSRS learning steps) - mobile", () => {
+    expect(textInterval(1 / (24 * 60), true)).toEqual("1min");
+    expect(textInterval(6 / (24 * 60), true)).toEqual("6min");
+    expect(textInterval(10 / (24 * 60), true)).toEqual("10min");
+    expect(textInterval(1 / 24, true)).toEqual("1h");
+    expect(textInterval(4 / 24, true)).toEqual("4h");
+    expect(textInterval(12 / 24, true)).toEqual("12h");
+});
+
 test("Test new cards", () => {
     expect(textInterval(undefined, false)).toEqual("New");
 });

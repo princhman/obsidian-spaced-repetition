@@ -61,6 +61,26 @@ export function textInterval(interval: number, isMobile: boolean): string {
         return t("NEW");
     }
 
+    // Sub-day intervals (FSRS learning steps)
+    if (interval > 0 && interval < 1) {
+        const hours: number = interval * 24;
+        if (hours < 1) {
+            const minutes: number = Math.max(1, Math.round(hours * 60));
+            if (isMobile) {
+                return t("MINUTES_STR_IVL_MOBILE", { interval: minutes });
+            } else {
+                return t("MINUTES_STR_IVL", { interval: minutes });
+            }
+        } else {
+            const roundedHours: number = Math.round(hours);
+            if (isMobile) {
+                return t("HOURS_STR_IVL_MOBILE", { interval: roundedHours });
+            } else {
+                return t("HOURS_STR_IVL", { interval: roundedHours });
+            }
+        }
+    }
+
     const m: number = Math.round(interval / 3.04375) / 10,
         y: number = Math.round(interval / 36.525) / 10;
 
