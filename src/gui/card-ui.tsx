@@ -234,7 +234,7 @@ export class CardUI {
             );
 
             await wrapper.renderMarkdownWrapper(
-                this._currentCard.front.trimStart(),
+                this._stripHeadingPrefix(this._currentCard.front.trimStart()),
                 this.content,
                 this._currentQuestion.questionText.textDirection,
             );
@@ -296,6 +296,14 @@ export class CardUI {
         }
         // Fallback: use the path directly
         return filePath;
+    }
+
+    /**
+     * Strips leading markdown heading markers (e.g. "## ") from text
+     * so that headings used as card fronts render as plain text.
+     */
+    private _stripHeadingPrefix(text: string): string {
+        return text.replace(/^#{1,6}\s+/, "");
     }
 
     private get _currentCard(): Card {

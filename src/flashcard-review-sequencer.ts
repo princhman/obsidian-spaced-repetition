@@ -10,6 +10,7 @@ import { DueDateHistogram } from "src/due-date-histogram";
 import { Note } from "src/note";
 import { Question, QuestionText } from "src/question";
 import { IQuestionPostponementList } from "src/question-postponement-list";
+import { CardFrontBackUtil } from "src/question-type";
 import { SRSettings } from "src/settings";
 import { TopicPath } from "src/topic-path";
 import { globalDateProvider } from "src/utils/dates";
@@ -389,6 +390,18 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
         const q: QuestionText = this.currentQuestion.questionText;
 
         q.actualQuestion = text;
+
+        // Re-derive card front/back from the updated question text
+        const cardFrontBackList = CardFrontBackUtil.expand(
+            this.currentQuestion.questionType,
+            text,
+            this.settings,
+        );
+        const cards = this.currentQuestion.cards;
+        for (let i = 0; i < cards.length && i < cardFrontBackList.length; i++) {
+            cards[i].front = cardFrontBackList[i].front;
+            cards[i].back = cardFrontBackList[i].back;
+        }
 
         await DataStore.getInstance().questionWrite(this.currentQuestion);
     }

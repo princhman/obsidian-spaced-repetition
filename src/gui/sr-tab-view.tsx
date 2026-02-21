@@ -208,7 +208,8 @@ export class SRTabView extends ItemView {
         );
         editModal
             .then(async (modifiedCardText) => {
-                this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.flashcardView.refresh();
             })
             .catch((reason) => console.log(reason));
     }
