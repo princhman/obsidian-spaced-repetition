@@ -220,8 +220,8 @@ export default class SRPlugin extends Plugin {
 
     private _registerMnemoCodeBlockProcessor(): void {
         this.registerMarkdownCodeBlockProcessor("mnemo", (source, el) => {
-            const cards = parseMnemoBlock(source);
-            if (!cards || cards.length === 0) {
+            const block = parseMnemoBlock(source);
+            if (!block || block.cards.length === 0) {
                 el.createEl("code", { text: source });
                 return;
             }
@@ -229,13 +229,14 @@ export default class SRPlugin extends Plugin {
             const container = el.createDiv({ cls: "sr-mnemo-block" });
             const stateNames = ["New", "Learning", "Review", "Relearning"];
 
-            for (let i = 0; i < cards.length; i++) {
-                const card = cards[i];
+            for (let i = 0; i < block.cards.length; i++) {
+                const card = block.cards[i];
                 if (card.isNew) continue;
 
                 const row = container.createDiv({ cls: "sr-mnemo-card" });
-                if (cards.length > 1) {
-                    row.createSpan({ text: `C${i}: `, cls: "sr-mnemo-label" });
+                if (block.cards.length > 1) {
+                    const label = this.getCardLabel(block.type, i);
+                    row.createSpan({ text: `${label}: `, cls: "sr-mnemo-label" });
                 }
                 row.createSpan({
                     text: `Due ${card.due}`,
@@ -248,6 +249,13 @@ export default class SRPlugin extends Plugin {
                 });
             }
         });
+    }
+
+    private getCardLabel(type: string | undefined, index: number): string {
+        if (type === "reversed") {
+            return index === 0 ? "Front\u2192Back" : "Back\u2192Front";
+        }
+        return `C${index}`;
     }
 
     showFileMenuItems(status: boolean) {

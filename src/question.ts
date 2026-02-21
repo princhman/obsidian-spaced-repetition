@@ -228,8 +228,7 @@ export class Question {
         const hasSchedule: boolean = this.cards.some((card) => card.hasSchedule);
         if (hasSchedule) {
             result = result.trimEnd();
-            const schedule =
-                DataStoreAlgorithm.getInstance().questionFormatSchedule(this);
+            const schedule = DataStoreAlgorithm.getInstance().questionFormatSchedule(this);
             const isCodeBlock = schedule.startsWith("```");
 
             if (isCodeBlock) {

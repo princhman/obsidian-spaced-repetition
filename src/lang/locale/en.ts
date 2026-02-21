@@ -259,8 +259,7 @@ export default {
     IMAGE_OCCLUSION_MASK_COLOR: "Mask color",
     IMAGE_OCCLUSION_MASK_COLOR_DESC: "The color used to mask occluded regions",
     IMAGE_OCCLUSION_DEFAULT_MODE: "Default occlusion mode",
-    IMAGE_OCCLUSION_DEFAULT_MODE_DESC:
-        "The default mode when creating new image occlusion cards",
+    IMAGE_OCCLUSION_DEFAULT_MODE_DESC: "The default mode when creating new image occlusion cards",
     IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE: "Hide All, Reveal One",
     IMAGE_OCCLUSION_STAGED_REVEAL: "Staged Reveal",
     IMAGE_OCCLUSION_REVEAL_NEXT: "Reveal Next",

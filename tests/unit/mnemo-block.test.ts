@@ -1,6 +1,6 @@
 import {
     extractMnemoBlockFromText,
-    MnemoCardData,
+    MnemoBlockData,
     parseMnemoBlock,
     serializeMnemoBlock,
     serializeMnemoCodeBlock,
@@ -17,8 +17,8 @@ lapses: 1
 steps: 0
 last: 2026-02-21`;
         const result = parseMnemoBlock(source);
-        expect(result).toHaveLength(1);
-        expect(result[0]).toEqual({
+        expect(result.cards).toHaveLength(1);
+        expect(result.cards[0]).toEqual({
             isNew: false,
             due: "2026-02-28",
             s: 4.93,
@@ -51,11 +51,36 @@ lapses: 0
 steps: 0
 last: 2026-02-20`;
         const result = parseMnemoBlock(source);
-        expect(result).toHaveLength(2);
-        expect(result[0].due).toBe("2026-02-28");
-        expect(result[0].s).toBe(4.93);
-        expect(result[1].due).toBe("2026-03-05");
-        expect(result[1].reps).toBe(8);
+        expect(result.cards).toHaveLength(2);
+        expect(result.cards[0].due).toBe("2026-02-28");
+        expect(result.cards[0].s).toBe(4.93);
+        expect(result.cards[1].due).toBe("2026-03-05");
+        expect(result.cards[1].reps).toBe(8);
+    });
+
+    test("Parses type field", () => {
+        const source = `type: reversed
+[0]
+due: 2026-02-28
+s: 4.93
+d: 5.71
+state: 2
+reps: 5
+lapses: 1
+steps: 0
+last: 2026-02-21
+[1]
+due: 2026-03-05
+s: 6.10
+d: 4.20
+state: 2
+reps: 8
+lapses: 0
+steps: 0
+last: 2026-02-20`;
+        const result = parseMnemoBlock(source);
+        expect(result.type).toBe("reversed");
+        expect(result.cards).toHaveLength(2);
     });
 
     test("Parses new card marker", () => {
@@ -71,9 +96,9 @@ last: 2026-02-21
 [1]
 new: true`;
         const result = parseMnemoBlock(source);
-        expect(result).toHaveLength(2);
-        expect(result[0].isNew).toBe(false);
-        expect(result[1].isNew).toBe(true);
+        expect(result.cards).toHaveLength(2);
+        expect(result.cards[0].isNew).toBe(false);
+        expect(result.cards[1].isNew).toBe(true);
     });
 
     test("Returns null for empty input", () => {
@@ -107,50 +132,56 @@ lapses: 0
 steps: 0
 last: 2026-02-21`;
         const result = parseMnemoBlock(source);
-        expect(result).toHaveLength(3);
-        expect(result[0].due).toBe("2026-02-28");
-        expect(result[1].isNew).toBe(true); // gap filled
-        expect(result[2].due).toBe("2026-03-01");
+        expect(result.cards).toHaveLength(3);
+        expect(result.cards[0].due).toBe("2026-02-28");
+        expect(result.cards[1].isNew).toBe(true); // gap filled
+        expect(result.cards[2].due).toBe("2026-03-01");
     });
 });
 
 describe("serializeMnemoBlock", () => {
     test("Serializes single card", () => {
-        const cards: MnemoCardData[] = [
-            {
-                isNew: false,
-                due: "2026-02-28",
-                s: 4.93,
-                d: 5.71,
-                state: 2,
-                reps: 5,
-                lapses: 1,
-                steps: 0,
-                last: "2026-02-21",
-            },
-        ];
-        const result = serializeMnemoBlock(cards);
+        const block: MnemoBlockData = {
+            cards: [
+                {
+                    isNew: false,
+                    due: "2026-02-28",
+                    s: 4.93,
+                    d: 5.71,
+                    state: 2,
+                    reps: 5,
+                    lapses: 1,
+                    steps: 0,
+                    last: "2026-02-21",
+                },
+            ],
+        };
+        const result = serializeMnemoBlock(block);
         expect(result).toBe(
             "due: 2026-02-28\ns: 4.93\nd: 5.71\nstate: 2\nreps: 5\nlapses: 1\nsteps: 0\nlast: 2026-02-21",
         );
     });
 
-    test("Serializes multi-card block", () => {
-        const cards: MnemoCardData[] = [
-            {
-                isNew: false,
-                due: "2026-02-28",
-                s: 4.93,
-                d: 5.71,
-                state: 2,
-                reps: 5,
-                lapses: 1,
-                steps: 0,
-                last: "2026-02-21",
-            },
-            { isNew: true },
-        ];
-        const result = serializeMnemoBlock(cards);
+    test("Serializes multi-card block with type", () => {
+        const block: MnemoBlockData = {
+            type: "reversed",
+            cards: [
+                {
+                    isNew: false,
+                    due: "2026-02-28",
+                    s: 4.93,
+                    d: 5.71,
+                    state: 2,
+                    reps: 5,
+                    lapses: 1,
+                    steps: 0,
+                    last: "2026-02-21",
+                },
+                { isNew: true },
+            ],
+        };
+        const result = serializeMnemoBlock(block);
+        expect(result).toContain("type: reversed");
         expect(result).toContain("[0]");
         expect(result).toContain("[1]");
         expect(result).toContain("new: true");
@@ -158,27 +189,29 @@ describe("serializeMnemoBlock", () => {
     });
 
     test("Serializes new card", () => {
-        const cards: MnemoCardData[] = [{ isNew: true }];
-        expect(serializeMnemoBlock(cards)).toBe("new: true");
+        const block: MnemoBlockData = { cards: [{ isNew: true }] };
+        expect(serializeMnemoBlock(block)).toBe("new: true");
     });
 });
 
 describe("serializeMnemoCodeBlock", () => {
     test("Wraps in mnemo fences", () => {
-        const cards: MnemoCardData[] = [
-            {
-                isNew: false,
-                due: "2026-02-28",
-                s: 4.93,
-                d: 5.71,
-                state: 2,
-                reps: 5,
-                lapses: 1,
-                steps: 0,
-                last: "2026-02-21",
-            },
-        ];
-        const result = serializeMnemoCodeBlock(cards);
+        const block: MnemoBlockData = {
+            cards: [
+                {
+                    isNew: false,
+                    due: "2026-02-28",
+                    s: 4.93,
+                    d: 5.71,
+                    state: 2,
+                    reps: 5,
+                    lapses: 1,
+                    steps: 0,
+                    last: "2026-02-21",
+                },
+            ],
+        };
+        const result = serializeMnemoCodeBlock(block);
         expect(result).toMatch(/^```mnemo\n/);
         expect(result).toMatch(/\n```$/);
     });
@@ -186,53 +219,59 @@ describe("serializeMnemoCodeBlock", () => {
 
 describe("Round-trip: serialize then parse", () => {
     test("Single card round-trip", () => {
-        const original: MnemoCardData[] = [
-            {
-                isNew: false,
-                due: "2026-02-28",
-                s: 4.93,
-                d: 5.71,
-                state: 2,
-                reps: 5,
-                lapses: 1,
-                steps: 0,
-                last: "2026-02-21",
-            },
-        ];
+        const original: MnemoBlockData = {
+            cards: [
+                {
+                    isNew: false,
+                    due: "2026-02-28",
+                    s: 4.93,
+                    d: 5.71,
+                    state: 2,
+                    reps: 5,
+                    lapses: 1,
+                    steps: 0,
+                    last: "2026-02-21",
+                },
+            ],
+        };
         const serialized = serializeMnemoBlock(original);
         const parsed = parseMnemoBlock(serialized);
-        expect(parsed).toEqual(original);
+        expect(parsed.cards).toEqual(original.cards);
     });
 
-    test("Multi-card round-trip", () => {
-        const original: MnemoCardData[] = [
-            {
-                isNew: false,
-                due: "2026-02-28",
-                s: 4.93,
-                d: 5.71,
-                state: 2,
-                reps: 5,
-                lapses: 1,
-                steps: 0,
-                last: "2026-02-21",
-            },
-            { isNew: true },
-            {
-                isNew: false,
-                due: "2026-03-05",
-                s: 6.1,
-                d: 4.2,
-                state: 1,
-                reps: 2,
-                lapses: 0,
-                steps: 1,
-                last: "2026-02-20",
-            },
-        ];
+    test("Multi-card round-trip with type", () => {
+        const original: MnemoBlockData = {
+            type: "cloze",
+            cards: [
+                {
+                    isNew: false,
+                    due: "2026-02-28",
+                    s: 4.93,
+                    d: 5.71,
+                    state: 2,
+                    reps: 5,
+                    lapses: 1,
+                    steps: 0,
+                    last: "2026-02-21",
+                },
+                { isNew: true },
+                {
+                    isNew: false,
+                    due: "2026-03-05",
+                    s: 6.1,
+                    d: 4.2,
+                    state: 1,
+                    reps: 2,
+                    lapses: 0,
+                    steps: 1,
+                    last: "2026-02-20",
+                },
+            ],
+        };
         const serialized = serializeMnemoBlock(original);
         const parsed = parseMnemoBlock(serialized);
-        expect(parsed).toEqual(original);
+        expect(parsed.type).toBe("cloze");
+        expect(parsed.cards).toEqual(original.cards);
     });
 });
 

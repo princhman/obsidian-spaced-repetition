@@ -10,16 +10,23 @@ export interface MnemoCardData {
     last?: string; // YYYY-MM-DD
 }
 
+export interface MnemoBlockData {
+    type?: string; // "basic", "reversed", "cloze", "occlusion"
+    cards: MnemoCardData[];
+}
+
 /**
- * Parses the content inside a ```mnemo code block into structured card data.
+ * Parses the content inside a ```mnemo code block into structured data.
  * The input text should NOT include the opening/closing ``` markers.
  *
  * Single card format:
+ *   type: basic
  *   due: 2026-02-28
  *   s: 4.93
  *   ...
  *
  * Multi-card format:
+ *   type: reversed
  *   [0]
  *   due: 2026-02-28
  *   s: 4.93
@@ -28,20 +35,37 @@ export interface MnemoCardData {
  *   due: 2026-03-05
  *   ...
  */
-export function parseMnemoBlock(text: string): MnemoCardData[] | null {
+export function parseMnemoBlock(text: string): MnemoBlockData | null {
     const lines = text.trim().split("\n");
     if (lines.length === 0) return null;
 
+    // Extract block-level metadata (lines before first [N] header or card data)
+    let type: string | undefined;
+    const cardLines: string[] = [];
+    for (const line of lines) {
+        const trimmed = line.trim();
+        const typeMatch = trimmed.match(/^type:\s*(.+)$/);
+        if (typeMatch && cardLines.length === 0) {
+            type = typeMatch[1].trim();
+            continue;
+        }
+        cardLines.push(line);
+    }
+
     // Check if multi-card format (starts with [N] header)
-    const firstNonEmpty = lines.find((l) => l.trim().length > 0);
+    const firstNonEmpty = cardLines.find((l) => l.trim().length > 0);
     const isMultiCard = firstNonEmpty && /^\[\d+\]$/.test(firstNonEmpty.trim());
 
+    let cards: MnemoCardData[] | null;
     if (isMultiCard) {
-        return parseMultiCardBlock(lines);
+        cards = parseMultiCardBlock(cardLines);
     } else {
-        const card = parseSingleCardLines(lines);
-        return card ? [card] : null;
+        const card = parseSingleCardLines(cardLines);
+        cards = card ? [card] : null;
     }
+
+    if (!cards) return null;
+    return { type, cards };
 }
 
 function parseMultiCardBlock(lines: string[]): MnemoCardData[] | null {
@@ -115,20 +139,25 @@ function parseSingleCardLines(lines: string[]): MnemoCardData | null {
 }
 
 /**
- * Serializes card data into the content that goes inside a ```mnemo block.
+ * Serializes block data into the content that goes inside a ```mnemo block.
  * Does NOT include the opening/closing ``` markers.
  */
-export function serializeMnemoBlock(cards: MnemoCardData[]): string {
-    if (cards.length === 1) {
-        return serializeSingleCard(cards[0]);
+export function serializeMnemoBlock(block: MnemoBlockData): string {
+    const parts: string[] = [];
+
+    if (block.type) {
+        parts.push(`type: ${block.type}`);
     }
 
-    const sections: string[] = [];
-    for (let i = 0; i < cards.length; i++) {
-        sections.push(`[${i}]`);
-        sections.push(serializeSingleCard(cards[i]));
+    if (block.cards.length === 1) {
+        parts.push(serializeSingleCard(block.cards[0]));
+    } else {
+        for (let i = 0; i < block.cards.length; i++) {
+            parts.push(`[${i}]`);
+            parts.push(serializeSingleCard(block.cards[i]));
+        }
     }
-    return sections.join("\n");
+    return parts.join("\n");
 }
 
 function serializeSingleCard(card: MnemoCardData): string {
@@ -151,8 +180,8 @@ function serializeSingleCard(card: MnemoCardData): string {
 /**
  * Wraps the mnemo block content in ```mnemo fences.
  */
-export function serializeMnemoCodeBlock(cards: MnemoCardData[]): string {
-    return "```mnemo\n" + serializeMnemoBlock(cards) + "\n```";
+export function serializeMnemoCodeBlock(block: MnemoBlockData): string {
+    return "```mnemo\n" + serializeMnemoBlock(block) + "\n```";
 }
 
 /**

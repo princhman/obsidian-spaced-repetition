@@ -145,10 +145,10 @@ export class StoreInNotes implements IDataStore {
     }
 
     private parseMnemoScheduling(mnemoContent: string): RepItemScheduleInfo[] {
-        const cards = parseMnemoBlock(mnemoContent);
-        if (!cards) return [];
+        const block = parseMnemoBlock(mnemoContent);
+        if (!block) return [];
 
-        return cards.map((card: MnemoCardData) => {
+        return block.cards.map((card: MnemoCardData) => {
             if (card.isNew || !card.due) return null;
 
             const dueDate: Moment = DateUtil.dateStrToMoment(card.due);

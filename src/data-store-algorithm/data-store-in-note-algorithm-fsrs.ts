@@ -8,7 +8,7 @@ import { ALLOWED_DATE_FORMATS, YAML_FRONT_MATTER_REGEX } from "src/constants";
 import { IDataStoreAlgorithm } from "src/data-store-algorithm/idata-store-algorithm";
 import { ISRFile } from "src/file";
 import { MnemoCardData, serializeMnemoCodeBlock } from "src/mnemo-block";
-import { Question } from "src/question";
+import { CardType, Question } from "src/question";
 import { SRSettings } from "src/settings";
 import { formatDateYYYYMMDD } from "src/utils/dates";
 
@@ -133,6 +133,28 @@ export class DataStoreInNoteAlgorithmFsrs implements IDataStoreAlgorithm {
                 return { isNew: true };
             }
         });
-        return serializeMnemoCodeBlock(cardDataList);
+        return serializeMnemoCodeBlock({
+            type: question.parsedQuestionInfo
+                ? this.cardTypeToMnemoType(question.questionType)
+                : undefined,
+            cards: cardDataList,
+        });
+    }
+
+    private cardTypeToMnemoType(cardType: CardType): string | undefined {
+        switch (cardType) {
+            case CardType.SingleLineBasic:
+            case CardType.MultiLineBasic:
+                return "basic";
+            case CardType.SingleLineReversed:
+            case CardType.MultiLineReversed:
+                return "reversed";
+            case CardType.Cloze:
+                return "cloze";
+            case CardType.ImageOcclusion:
+                return "occlusion";
+            default:
+                return undefined;
+        }
     }
 }
