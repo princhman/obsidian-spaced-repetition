@@ -555,22 +555,42 @@ export class SRSettingTab extends PluginSettingTab {
     private async createSettingFoldersToIgnore(containerEl: HTMLElement): Promise<void> {
         new Setting(containerEl)
             .setName(t("FOLDERS_TO_IGNORE"))
-            .setDesc(t("FOLDERS_TO_IGNORE_DESC"))
-            .addTextArea((text) =>
-                text
-                    .setValue(this.plugin.data.settings.noteFoldersToIgnore.join("\n"))
-                    .onChange((value) => {
-                        applySettingsUpdate(async () => {
-                            this.plugin.data.settings.noteFoldersToIgnore = value
-                                .split(/\n+/)
-                                .map((v) => v.trim())
-                                .filter((v) => v);
-                            await this.plugin.savePluginData();
+            .setDesc(t("FOLDERS_TO_IGNORE_DESC"));
 
+        const ignoredPaths = this.plugin.data.settings.noteFoldersToIgnore;
+
+        // Render current ignored paths as removable items
+        const listContainer = containerEl.createDiv("sr-ignored-paths-list");
+        for (const path of ignoredPaths) {
+            const item = listContainer.createDiv("sr-ignored-path-item");
+            item.createSpan({ text: path, cls: "sr-ignored-path-text" });
+            const removeBtn = item.createEl("button", { cls: "sr-ignored-path-remove" });
+            removeBtn.setText("✕");
+            removeBtn.addEventListener("click", async () => {
+                const idx = this.plugin.data.settings.noteFoldersToIgnore.indexOf(path);
+                if (idx >= 0) {
+                    this.plugin.data.settings.noteFoldersToIgnore.splice(idx, 1);
+                    await this.plugin.savePluginData();
+                    this.display();
+                }
+            });
+        }
+
+        // Add new path input
+        new Setting(containerEl).addText((text) =>
+            text.setPlaceholder("Templates/Scripts or **/*.excalidraw.md").then((t) => {
+                t.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => {
+                    if (e.key === "Enter") {
+                        const value = t.getValue().trim();
+                        if (value && !ignoredPaths.includes(value)) {
+                            this.plugin.data.settings.noteFoldersToIgnore.push(value);
+                            await this.plugin.savePluginData();
                             this.display();
-                        });
-                    }),
-            );
+                        }
+                    }
+                });
+            }),
+        );
     }
 
     private async tabUiPreferences(containerEl: HTMLElement): Promise<void> {

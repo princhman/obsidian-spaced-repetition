@@ -4,6 +4,7 @@ import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info"
 import { Card } from "src/card";
 import { DataStore } from "src/data-stores/base/data-store";
 import { frontmatterTagPseudoLineNum, ISRFile } from "src/file";
+import { parseMnemoIgnoreBlock } from "src/mnemo-block";
 import { parse, ParsedQuestionInfo, ParserOptions } from "src/parser";
 import { Question, QuestionText } from "src/question";
 import { CardFrontBack, CardFrontBackUtil } from "src/question-type";
@@ -38,6 +39,9 @@ export class NoteQuestionParser {
     // flashcardTagList filtered to those within the note's content and are note-level tags (i.e. not question specific)
     contentTopicPathInfo: TopicPathList[];
 
+    // Block IDs of questions suspended via mnemo-ignore block
+    suspendedBlockIds: Set<string>;
+
     questionList: Question[];
 
     constructor(settings: SRSettings) {
@@ -65,6 +69,9 @@ export class NoteQuestionParser {
             // Now that we know there are relevant flashcard tags in the file, we can get the more detailed info
             // that includes the line numbers of each tag
             const tagCompleteList: TagCache[] = noteFile.getAllTagsFromText();
+
+            // Parse suspended card block IDs from mnemo-ignore block
+            this.suspendedBlockIds = parseMnemoIgnoreBlock(noteText);
 
             // The following analysis can require fair computation.
             // There is no point doing it if there aren't any topic paths
@@ -112,6 +119,12 @@ export class NoteQuestionParser {
         const parsedQuestionInfoList: ParsedQuestionInfo[] = this.parseQuestions();
         for (const parsedQuestionInfo of parsedQuestionInfoList) {
             const question: Question = this.createQuestionObject(parsedQuestionInfo, textDirection);
+
+            // Check if this question is suspended via mnemo-ignore block
+            const blockId = question.questionText.obsidianBlockId;
+            if (blockId && this.suspendedBlockIds.has(blockId)) {
+                question.hasSuspendedTag = true;
+            }
 
             // Each rawCardText can turn into multiple CardFrontBack's (e.g. CardType.Cloze, CardType.SingleLineReversed)
             const cardFrontBackList: CardFrontBack[] = CardFrontBackUtil.expand(

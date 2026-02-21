@@ -192,3 +192,58 @@ export function extractMnemoBlockFromText(questionText: string): string | null {
     const match = questionText.match(/```mnemo\n([\s\S]*?)```/);
     return match ? match[1] : null;
 }
+
+// --- mnemo-ignore block support ---
+
+export interface MnemoIgnoreEntry {
+    blockId: string; // e.g. "^sr-a1b2c3"
+    readableText: string; // human-readable first line of the question
+}
+
+/**
+ * Parses a ```mnemo-ignore``` block from the full note text.
+ * Returns a Set of block IDs that should be ignored/suspended.
+ */
+export function parseMnemoIgnoreBlock(noteText: string): Set<string> {
+    const match = noteText.match(/```mnemo-ignore\n([\s\S]*?)```/);
+    if (!match) return new Set();
+
+    const ids = new Set<string>();
+    const lines = match[1].split("\n");
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) continue;
+        // Each line starts with ^blockId followed by optional readable text
+        const blockIdMatch = trimmed.match(/^(\^[a-zA-Z0-9-]+)/);
+        if (blockIdMatch) {
+            ids.add(blockIdMatch[1]);
+        }
+    }
+    return ids;
+}
+
+/**
+ * Adds an entry to the mnemo-ignore block in the note text.
+ * If no mnemo-ignore block exists, creates one after the frontmatter (or at the top).
+ */
+export function addToMnemoIgnoreBlock(noteText: string, entry: MnemoIgnoreEntry): string {
+    const entryLine = `${entry.blockId} ${entry.readableText}`;
+    const existingMatch = noteText.match(/```mnemo-ignore\n([\s\S]*?)```/);
+
+    if (existingMatch) {
+        // Append to existing block
+        const existingContent = existingMatch[1];
+        const newContent = existingContent.trimEnd() + "\n" + entryLine + "\n";
+        return noteText.replace(existingMatch[0], "```mnemo-ignore\n" + newContent + "```");
+    }
+
+    // Create new block - insert after frontmatter or at the top
+    const newBlock = "```mnemo-ignore\n" + entryLine + "\n```\n\n";
+    const frontmatterMatch = noteText.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+    if (frontmatterMatch) {
+        const insertPos = frontmatterMatch[0].length;
+        return noteText.slice(0, insertPos) + "\n" + newBlock + noteText.slice(insertPos);
+    }
+
+    return newBlock + noteText;
+}

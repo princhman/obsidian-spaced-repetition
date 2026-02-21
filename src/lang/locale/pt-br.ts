@@ -24,6 +24,10 @@ export default {
     CURRENT_INTERVAL_HELP_TEXT: "Intervalo atual: ",
     CARD_GENERATED_FROM: "Gerada a partir de: ${notePath}",
     NOT_A_FLASHCARD: "Not a flashcard",
+    SUSPEND_CARD: "Suspend card",
+    IGNORE_THIS_FOLDER: "Ignore this folder",
+    IGNORE_THIS_FILE: "Ignore this file",
+    IGNORED_PATH_ADDED: "Added to ignored paths: ${path}",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "Abrir uma nota para revisar",

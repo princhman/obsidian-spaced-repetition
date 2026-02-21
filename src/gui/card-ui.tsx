@@ -392,7 +392,7 @@ export class CardUI {
         this.disableButton = this.controls.createEl("button");
         this.disableButton.addClasses(["sr-button", "sr-disable-button"]);
         setIcon(this.disableButton, "x-circle");
-        this.disableButton.setAttribute("aria-label", t("NOT_A_FLASHCARD"));
+        this.disableButton.setAttribute("aria-label", t("SUSPEND_CARD"));
         this.disableButton.addEventListener("click", () => {
             this._disableCurrentCard();
         });

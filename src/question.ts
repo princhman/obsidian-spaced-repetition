@@ -188,6 +188,7 @@ export class Question {
     topicPathList: TopicPathList;
     questionText: QuestionText;
     hasEditLaterTag: boolean;
+    hasSuspendedTag: boolean;
     questionContext: string[];
     cards: Card[];
     hasChanged: boolean;
@@ -317,6 +318,7 @@ export class Question {
             topicPathList,
             questionText,
             hasEditLaterTag,
+            hasSuspendedTag: false,
             questionContext: context,
             cards: null,
             hasChanged: false,

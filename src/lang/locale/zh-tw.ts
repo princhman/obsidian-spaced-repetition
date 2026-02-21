@@ -23,6 +23,10 @@ export default {
     CURRENT_INTERVAL_HELP_TEXT: "目前間隔時間：",
     CARD_GENERATED_FROM: "生成自：${notePath}",
     NOT_A_FLASHCARD: "Not a flashcard",
+    SUSPEND_CARD: "Suspend card",
+    IGNORE_THIS_FOLDER: "Ignore this folder",
+    IGNORE_THIS_FILE: "Ignore this file",
+    IGNORED_PATH_ADDED: "Added to ignored paths: ${path}",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "打開一個筆記開始復習",
