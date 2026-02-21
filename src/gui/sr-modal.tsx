@@ -8,9 +8,15 @@ import {
 import { CardUI } from "src/gui/card-ui";
 import { DeckUI } from "src/gui/deck-ui";
 import { FlashcardEditModal } from "src/gui/edit-modal";
+import { ImageOcclusionEditorModal } from "src/gui/image-occlusion-editor";
+import {
+    extractOcclusionBlockContent,
+    parseOcclusionBlock,
+    serializeOcclusionCodeBlock,
+} from "src/image-occlusion";
 import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
-import { Question } from "src/question";
+import { CardType, Question } from "src/question";
 import { SRSettings } from "src/settings";
 
 export enum FlashcardMode {
@@ -79,6 +85,7 @@ export class FlashcardModal extends Modal {
             this.contentEl.createDiv(),
             this._showDecksList.bind(this),
             this._doEditQuestionText.bind(this),
+            this.close.bind(this),
         );
     }
 
@@ -112,8 +119,12 @@ export class FlashcardModal extends Modal {
         this.flashcardView.hide();
     }
 
-    private _startReviewOfDeck(deck: Deck) {
-        this.reviewSequencer.setCurrentDeck(deck.getTopicPath());
+    private _startReviewOfDeck(deck: Deck, noteFilePath?: string) {
+        if (noteFilePath) {
+            this.reviewSequencer.setCurrentDeckFilteredByNote(deck.getTopicPath(), noteFilePath);
+        } else {
+            this.reviewSequencer.setCurrentDeck(deck.getTopicPath());
+        }
         if (this.reviewSequencer.hasCurrentCard) {
             this._showFlashcard(deck);
             this.backButton.removeClass("sr-is-hidden");
@@ -125,6 +136,11 @@ export class FlashcardModal extends Modal {
     private async _doEditQuestionText(): Promise<void> {
         const currentQ: Question = this.reviewSequencer.currentQuestion;
 
+        if (currentQ.questionType === CardType.ImageOcclusion) {
+            await this._doEditImageOcclusion(currentQ);
+            return;
+        }
+
         // Just the question/answer text; without any preceding topic tag
         const textPrompt = currentQ.questionText.actualQuestion;
 
@@ -135,9 +151,48 @@ export class FlashcardModal extends Modal {
         );
         editModal
             .then(async (modifiedCardText) => {
-                this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.flashcardView.refresh();
             })
             .catch((reason) => console.log(reason));
+    }
+
+    private async _doEditImageOcclusion(question: Question): Promise<void> {
+        const questionText = question.questionText.actualQuestion;
+        const blockContent = extractOcclusionBlockContent(questionText);
+        if (!blockContent) return;
+
+        const existingData = parseOcclusionBlock(blockContent);
+        if (!existingData) return;
+
+        // Resolve image URL
+        let imageUrl: string;
+        const wikiMatch = existingData.imagePath.match(/!\[\[([^\]|]+)/);
+        const mdMatch = existingData.imagePath.match(/!\[.*?\]\((.+?)\)/);
+        const filePath = wikiMatch ? wikiMatch[1] : mdMatch ? mdMatch[1] : existingData.imagePath;
+
+        const target = this.app.metadataCache.getFirstLinkpathDest(
+            filePath,
+            question.note.filePath,
+        );
+        if (target) {
+            imageUrl = this.app.vault.getResourcePath(target);
+        } else {
+            imageUrl = filePath;
+        }
+
+        const result = await ImageOcclusionEditorModal.Prompt(
+            this.app,
+            imageUrl,
+            existingData.imagePath,
+            existingData,
+        );
+
+        if (result) {
+            const newCodeBlock = serializeOcclusionCodeBlock(result);
+            await this.reviewSequencer.updateCurrentQuestionText(newCodeBlock);
+            await this.flashcardView.refresh();
+        }
     }
 
     private _createBackButton() {

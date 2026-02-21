@@ -7,11 +7,14 @@ import { DataStore } from "src/data-stores/base/data-store";
 import { CardListType, Deck } from "src/deck";
 import { IDeckTreeIterator } from "src/deck-tree-iterator";
 import { DueDateHistogram } from "src/due-date-histogram";
+import { addToMnemoIgnoreBlock, MnemoIgnoreEntry } from "src/mnemo-block";
 import { Note } from "src/note";
 import { Question, QuestionText } from "src/question";
 import { IQuestionPostponementList } from "src/question-postponement-list";
+import { CardFrontBackUtil } from "src/question-type";
 import { SRSettings } from "src/settings";
 import { TopicPath } from "src/topic-path";
+import { generateBlockId } from "src/utils/block-id";
 import { globalDateProvider } from "src/utils/dates";
 
 export interface IFlashcardReviewSequencer {
@@ -21,9 +24,11 @@ export interface IFlashcardReviewSequencer {
     get currentNote(): Note;
     get currentDeck(): Deck;
     get originalDeckTree(): Deck;
+    get remainingDeckTree(): Deck;
 
     setDeckTree(originalDeckTree: Deck, remainingDeckTree: Deck): void;
     setCurrentDeck(topicPath: TopicPath): void;
+    setCurrentDeckFilteredByNote(topicPath: TopicPath, noteFilePath: string): void;
     getDeckStats(topicPath: TopicPath): DeckStats;
     getSubDecksWithCardsInQueue(deck: Deck): Deck[];
     skipCurrentCard(): void;
@@ -101,7 +106,7 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     private _originalDeckTree: Deck;
 
     // This is set by the caller, and must have the same deck hierarchy as originalDeckTree.
-    private remainingDeckTree: Deck;
+    private _remainingDeckTree: Deck;
 
     private reviewMode: FlashcardReviewMode;
     private cardSequencer: IDeckTreeIterator;
@@ -151,24 +156,73 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     setDeckTree(originalDeckTree: Deck, remainingDeckTree: Deck): void {
         this.cardSequencer.setBaseDeck(remainingDeckTree);
         this._originalDeckTree = originalDeckTree;
-        this.remainingDeckTree = remainingDeckTree;
+        this._remainingDeckTree = remainingDeckTree;
         this.setCurrentDeck(TopicPath.emptyPath);
     }
 
     setCurrentDeck(topicPath: TopicPath): void {
+        // Restore any cards that were stashed by setCurrentDeckFilteredByNote
+        this._restoreStashedCards();
         this.cardSequencer.setIteratorTopicPath(topicPath);
         this.cardSequencer.nextCard();
+    }
+
+    setCurrentDeckFilteredByNote(topicPath: TopicPath, noteFilePath: string): void {
+        // Restore any previously stashed cards first
+        this._restoreStashedCards();
+
+        // Temporarily remove non-matching cards from the remaining deck
+        // so the iterator only sees cards from the specified note.
+        // The stashed cards are restored when setCurrentDeck is called.
+        const remainingDeck = this._remainingDeckTree.getDeck(topicPath);
+        const stashedDue: Card[] = [];
+        const stashedNew: Card[] = [];
+
+        for (let i = remainingDeck.dueFlashcards.length - 1; i >= 0; i--) {
+            if (remainingDeck.dueFlashcards[i].question.note.file.path !== noteFilePath) {
+                stashedDue.push(remainingDeck.dueFlashcards[i]);
+                remainingDeck.dueFlashcards.splice(i, 1);
+            }
+        }
+        for (let i = remainingDeck.newFlashcards.length - 1; i >= 0; i--) {
+            if (remainingDeck.newFlashcards[i].question.note.file.path !== noteFilePath) {
+                stashedNew.push(remainingDeck.newFlashcards[i]);
+                remainingDeck.newFlashcards.splice(i, 1);
+            }
+        }
+
+        this._stashedCards = { deck: remainingDeck, dueCards: stashedDue, newCards: stashedNew };
+        this.cardSequencer.setIteratorTopicPath(topicPath);
+        this.cardSequencer.nextCard();
+    }
+
+    private _stashedCards: {
+        deck: Deck;
+        dueCards: Card[];
+        newCards: Card[];
+    } | null = null;
+
+    private _restoreStashedCards(): void {
+        if (this._stashedCards) {
+            this._stashedCards.deck.dueFlashcards.push(...this._stashedCards.dueCards);
+            this._stashedCards.deck.newFlashcards.push(...this._stashedCards.newCards);
+            this._stashedCards = null;
+        }
     }
 
     get originalDeckTree(): Deck {
         return this._originalDeckTree;
     }
 
+    get remainingDeckTree(): Deck {
+        return this._remainingDeckTree;
+    }
+
     getDeckStats(topicPath: TopicPath): DeckStats {
         const totalCount: number = this._originalDeckTree
             .getDeck(topicPath)
             .getDistinctCardCount(CardListType.All, true);
-        const remainingDeck: Deck = this.remainingDeckTree.getDeck(topicPath);
+        const remainingDeck: Deck = this._remainingDeckTree.getDeck(topicPath);
         const newCount: number = remainingDeck.getDistinctCardCount(CardListType.NewCard, true);
         const dueCount: number = remainingDeck.getDistinctCardCount(CardListType.DueCard, true);
 
@@ -225,9 +279,34 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     }
 
     async disableCurrentCard(): Promise<void> {
-        // Add the edit-later tag to the question text so it won't appear in future reviews
-        const currentText = this.currentQuestion.questionText.actualQuestion;
-        await this.updateCurrentQuestionText(currentText + " " + this.settings.editLaterTag);
+        const question = this.currentQuestion;
+        const noteFile = question.note.file;
+        let noteText = await noteFile.read();
+
+        // Ensure the question has a block ID (generate one if missing)
+        let blockId = question.questionText.obsidianBlockId;
+        if (!blockId) {
+            blockId = generateBlockId(noteText);
+            // Write the block ID onto the question line in the file
+            const originalText = question.questionText.original;
+            const questionLine = question.questionText.actualQuestion;
+            // Insert block ID at the end of the first line of the question
+            const firstLine = questionLine.split("\n")[0];
+            const updatedOriginal = originalText.replace(firstLine, firstLine + " " + blockId);
+            noteText = noteText.replace(originalText, updatedOriginal);
+            question.questionText.obsidianBlockId = blockId;
+        }
+
+        // Add entry to mnemo-ignore block
+        const firstLine = question.questionText.actualQuestion.split("\n")[0];
+        const entry: MnemoIgnoreEntry = {
+            blockId,
+            readableText: firstLine,
+        };
+        noteText = addToMnemoIgnoreBlock(noteText, entry);
+
+        // Write the updated note
+        await noteFile.write(noteText);
 
         // Remove the card from the current review session
         this.cardSequencer.deleteCurrentQuestionFromAllDecks();
@@ -250,13 +329,15 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     }
 
     async processReviewReviewMode(response: ReviewResponse): Promise<void> {
-        if (response != ReviewResponse.Reset || this.currentCard.hasSchedule) {
+        const isResetAsReview = this.srsAlgorithm.isResetAsReview();
+        if (response != ReviewResponse.Reset || this.currentCard.hasSchedule || isResetAsReview) {
             const oldSchedule = this.currentCard.scheduleInfo;
 
             // We need to update the schedule if:
             //  (1) the user reviewed with easy/good/hard (either a new or due card),
-            //  (2) or reset a due card
-            // Nothing to do if a user resets a new card
+            //  (2) or reset a due card (SM-2)
+            //  (3) or the algorithm treats reset as a review (FSRS "Again")
+            // Nothing to do if a user resets a new card in SM-2 mode
             this.currentCard.scheduleInfo = this.determineCardSchedule(response, this.currentCard);
 
             // Update the source file with the updated schedule
@@ -309,11 +390,11 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     determineCardSchedule(response: ReviewResponse, card: Card): RepItemScheduleInfo {
         let result: RepItemScheduleInfo;
 
-        if (response == ReviewResponse.Reset) {
-            // Resetting the card schedule
+        if (response == ReviewResponse.Reset && !this.srsAlgorithm.isResetAsReview()) {
+            // SM-2: Resetting the card schedule to a blank state
             result = this.srsAlgorithm.cardGetResetSchedule();
         } else {
-            // scheduled card
+            // Normal review (Easy/Good/Hard), or FSRS "Again" which is treated as a review
             if (card.hasSchedule) {
                 result = this.srsAlgorithm.cardCalcUpdatedSchedule(
                     response,
@@ -336,6 +417,18 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
         const q: QuestionText = this.currentQuestion.questionText;
 
         q.actualQuestion = text;
+
+        // Re-derive card front/back from the updated question text
+        const cardFrontBackList = CardFrontBackUtil.expand(
+            this.currentQuestion.questionType,
+            text,
+            this.settings,
+        );
+        const cards = this.currentQuestion.cards;
+        for (let i = 0; i < cards.length && i < cardFrontBackList.length; i++) {
+            cards[i].front = cardFrontBackList[i].front;
+            cards[i].back = cardFrontBackList[i].back;
+        }
 
         await DataStore.getInstance().questionWrite(this.currentQuestion);
     }

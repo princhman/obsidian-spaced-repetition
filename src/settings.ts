@@ -37,6 +37,7 @@ export interface SRSettings {
     showRibbonIcon: boolean;
     showStatusBar: boolean;
     initiallyExpandAllSubdecksInTree: boolean;
+    showNotesInDeckTree: boolean;
     showContextInCards: boolean;
     showIntervalInReviewButtons: boolean;
     flashcardHeightPercentage: number;
@@ -44,8 +45,13 @@ export interface SRSettings {
     flashcardEasyText: string;
     flashcardGoodText: string;
     flashcardHardText: string;
+    flashcardAgainText: string;
     reviewButtonDelay: number;
     openViewInNewTab: boolean;
+
+    // image occlusion
+    imageOcclusionMaskColor: string;
+    imageOcclusionDefaultMode: string;
 
     // algorithm
     algorithm: string;
@@ -55,6 +61,11 @@ export interface SRSettings {
     loadBalance: boolean;
     maximumInterval: number;
     maxLinkFactor: number;
+
+    // FSRS algorithm settings
+    fsrsRequestRetention: number;
+    fsrsEnableFuzz: boolean;
+    fsrsWeights: number[];
 
     // storage
     dataStore: string;
@@ -97,6 +108,7 @@ export const DEFAULT_SETTINGS: SRSettings = {
     showRibbonIcon: true,
     showStatusBar: true,
     initiallyExpandAllSubdecksInTree: false,
+    showNotesInDeckTree: false,
     showContextInCards: true,
     showIntervalInReviewButtons: true,
     flashcardHeightPercentage: Platform.isMobile ? 100 : 80,
@@ -104,8 +116,13 @@ export const DEFAULT_SETTINGS: SRSettings = {
     flashcardEasyText: t("EASY"),
     flashcardGoodText: t("GOOD"),
     flashcardHardText: t("HARD"),
+    flashcardAgainText: t("AGAIN"),
     reviewButtonDelay: 0,
     openViewInNewTab: false,
+
+    // image occlusion
+    imageOcclusionMaskColor: "#ff6b35",
+    imageOcclusionDefaultMode: "hideAllRevealOne",
 
     // algorithm
     algorithm: Algorithm.SM_2_OSR,
@@ -115,6 +132,11 @@ export const DEFAULT_SETTINGS: SRSettings = {
     loadBalance: true,
     maximumInterval: 36525,
     maxLinkFactor: 1.0,
+
+    // FSRS algorithm settings
+    fsrsRequestRetention: 0.9,
+    fsrsEnableFuzz: true,
+    fsrsWeights: [],
 
     // storage
     dataStore: DataStoreName.NOTES,

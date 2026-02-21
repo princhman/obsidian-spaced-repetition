@@ -1,16 +1,21 @@
 import { now } from "moment";
 import { App, Notice, Platform, setIcon } from "obsidian";
 
+import { Algorithm } from "src/algorithms/base/isrs-algorithm";
 import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
+import { RepItemScheduleInfoFsrs } from "src/algorithms/fsrs/rep-item-schedule-info-fsrs";
 import { textInterval } from "src/algorithms/osr/note-scheduling";
 import { Card } from "src/card";
+import { TICKS_PER_DAY } from "src/constants";
 import { Deck } from "src/deck";
 import {
     FlashcardReviewMode,
     IFlashcardReviewSequencer as IFlashcardReviewSequencer,
 } from "src/flashcard-review-sequencer";
+import { ImageOcclusionRenderer } from "src/gui/image-occlusion-renderer";
 import { FlashcardMode } from "src/gui/sr-modal";
+import { decodeIOCardString, IOCardData, isIOCardString, OcclusionMode } from "src/image-occlusion";
 import { t } from "src/lang/helpers";
 import type SRPlugin from "src/main";
 import { Note } from "src/note";
@@ -66,6 +71,7 @@ export class CardUI {
     public disableButton: HTMLButtonElement;
 
     public response: HTMLDivElement;
+    public againButton: HTMLButtonElement;
     public hardButton: HTMLButtonElement;
     public goodButton: HTMLButtonElement;
     public easyButton: HTMLButtonElement;
@@ -85,6 +91,12 @@ export class CardUI {
     private reviewMode: FlashcardReviewMode;
     private backToDeck: () => void;
     private editClickHandler: () => void;
+    private closeHandler: () => void;
+
+    // Image occlusion state
+    private _ioCardData: IOCardData | null = null;
+    private _ioStagedRevealCount: number = 0;
+    private _ioContainer: HTMLElement | null = null;
 
     constructor(
         app: App,
@@ -95,6 +107,7 @@ export class CardUI {
         view: HTMLDivElement,
         backToDeck: () => void,
         editClickHandler: () => void,
+        closeHandler: () => void,
     ) {
         // Init properties
         this.app = app;
@@ -104,6 +117,7 @@ export class CardUI {
         this.reviewMode = reviewMode;
         this.backToDeck = backToDeck;
         this.editClickHandler = editClickHandler;
+        this.closeHandler = closeHandler;
         this.view = view;
         this.chosenDeck = null;
 
@@ -203,22 +217,93 @@ export class CardUI {
 
         // Update card content
         this.content.empty();
-        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
-            this.app,
-            this.plugin,
-            this._currentNote.filePath,
-        );
+        this._ioCardData = null;
+        this._ioContainer = null;
+        this._ioStagedRevealCount = 0;
 
-        await wrapper.renderMarkdownWrapper(
-            this._currentCard.front.trimStart(),
-            this.content,
-            this._currentQuestion.questionText.textDirection,
-        );
+        if (isIOCardString(this._currentCard.front)) {
+            this._ioCardData = decodeIOCardString(this._currentCard.front);
+            if (this._ioCardData) {
+                this._renderIOFront(this._ioCardData);
+            }
+        } else {
+            const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+                this.app,
+                this.plugin,
+                this._currentNote.filePath,
+            );
+
+            await wrapper.renderMarkdownWrapper(
+                this._stripHeadingPrefix(this._currentCard.front.trimStart()),
+                this.content,
+                this._currentQuestion.questionText.textDirection,
+            );
+        }
         // Set scroll position back to top
         this.content.scrollTop = 0;
 
         // Update response buttons
         this._resetResponseButtons();
+
+        // For staged reveal, change "Show Answer" button text
+        if (
+            this._ioCardData &&
+            this._ioCardData.occlusionData.mode === OcclusionMode.StagedReveal
+        ) {
+            this.answerButton.setText(t("IMAGE_OCCLUSION_REVEAL_NEXT"));
+        }
+    }
+
+    private _renderIOFront(ioData: IOCardData): void {
+        const imageUrl = this._resolveIOImageUrl(ioData.occlusionData.imagePath);
+        const maskColor = this.settings.imageOcclusionMaskColor ?? "#ff6b35";
+
+        // On front, all rects are hidden (no reveals)
+        this._ioContainer = ImageOcclusionRenderer.render(
+            this.content,
+            imageUrl,
+            ioData.occlusionData.rects,
+            new Set(),
+            maskColor,
+        );
+    }
+
+    private _resolveIOImageUrl(imagePath: string): string {
+        // Parse ![[filename]] or ![alt](path) syntax
+        let filePath: string;
+
+        const wikiMatch = imagePath.match(/!\[\[([^\]]+)\]\]/);
+        if (wikiMatch) {
+            filePath = wikiMatch[1];
+            // Strip size suffix like |400
+            const pipeIdx = filePath.indexOf("|");
+            if (pipeIdx !== -1) filePath = filePath.substring(0, pipeIdx);
+        } else {
+            const mdMatch = imagePath.match(/!\[.*?\]\((.+?)\)/);
+            if (mdMatch) {
+                filePath = mdMatch[1];
+            } else {
+                filePath = imagePath;
+            }
+        }
+
+        const target = this.app.metadataCache.getFirstLinkpathDest(
+            filePath,
+            this._currentNote.filePath,
+        );
+        if (target) {
+            return this.app.vault.getResourcePath(target);
+        }
+        // Fallback: use the path directly
+        return filePath;
+    }
+
+    /**
+     * Strips leading markdown heading markers (e.g. "## ") from text
+     * so that headings used as card fronts render as plain text.
+     */
+    private _stripHeadingPrefix(text: string): string {
+        return text.replace(/^#{1,6}\s+/, "");
     }
 
     private get _currentCard(): Card {
@@ -244,6 +329,7 @@ export class CardUI {
         this.lastPressed = timeNow;
 
         await this.reviewSequencer.processReview(response);
+        this.plugin.recordReview();
         await this._showNextCard();
     }
 
@@ -306,7 +392,7 @@ export class CardUI {
         this.disableButton = this.controls.createEl("button");
         this.disableButton.addClasses(["sr-button", "sr-disable-button"]);
         setIcon(this.disableButton, "x-circle");
-        this.disableButton.setAttribute("aria-label", t("NOT_A_FLASHCARD"));
+        this.disableButton.setAttribute("aria-label", t("SUSPEND_CARD"));
         this.disableButton.addEventListener("click", () => {
             this._disableCurrentCard();
         });
@@ -325,14 +411,26 @@ export class CardUI {
     private _displayCurrentCardInfoNotice() {
         const schedule = this._currentCard.scheduleInfo;
 
-        const currentEaseStr = t("CURRENT_EASE_HELP_TEXT") + (schedule?.latestEase ?? t("NEW"));
-        const currentIntervalStr =
-            t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule?.interval, false);
+        let infoStr: string;
+        if (schedule instanceof RepItemScheduleInfoFsrs) {
+            const stabilityStr = t("FSRS_STABILITY") + ": " + schedule.stability.toFixed(1) + "d";
+            const difficultyStr =
+                t("FSRS_DIFFICULTY") + ": " + schedule.difficulty.toFixed(1) + "/10";
+            const intervalStr =
+                t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule.interval, false);
+            infoStr = [stabilityStr, difficultyStr, intervalStr].join("\n");
+        } else {
+            const currentEaseStr = t("CURRENT_EASE_HELP_TEXT") + (schedule?.latestEase ?? t("NEW"));
+            const currentIntervalStr =
+                t("CURRENT_INTERVAL_HELP_TEXT") + textInterval(schedule?.interval, false);
+            infoStr = currentEaseStr + "\n" + currentIntervalStr;
+        }
+
         const generatedFromStr = t("CARD_GENERATED_FROM", {
             notePath: this._currentQuestion.note.filePath,
         });
 
-        new Notice(currentEaseStr + "\n" + currentIntervalStr + "\n" + generatedFromStr);
+        new Notice(infoStr + "\n" + generatedFromStr);
     }
 
     // #region -> Deck Info
@@ -398,16 +496,22 @@ export class CardUI {
         this.currentDeckCardCounterIcon.addClass("sr-current-deck-card-counter-icon");
         setIcon(this.currentDeckCardCounterIcon, "credit-card");
 
+        const contextWrapper = this.infoSection.createDiv();
+        contextWrapper.addClass("sr-context-wrapper");
+
         if (this.settings.showContextInCards) {
-            this.cardContext = this.infoSection.createDiv();
+            this.cardContext = contextWrapper.createSpan();
             this.cardContext.addClass("sr-context");
         }
 
-        this.sourceNoteLink = this.infoSection.createDiv();
-        this.sourceNoteLink.addClass("sr-source-note");
+        this.sourceNoteLink = contextWrapper.createSpan();
+        this.sourceNoteLink.addClass("sr-source-note-link");
+        setIcon(this.sourceNoteLink, "external-link");
+        this.sourceNoteLink.setAttribute("aria-label", "Open source note");
         this.sourceNoteLink.addEventListener("click", async () => {
             const note = this._currentNote;
             if (note?.file) {
+                this.closeHandler();
                 await this.app.workspace.openLinkText(note.filePath, "");
             }
         });
@@ -417,7 +521,6 @@ export class CardUI {
         this._updateChosenDeckInfo(chosenDeck);
         this._updateCurrentDeckInfo(chosenDeck, currentDeck);
         this._updateCardContext();
-        this._updateSourceNoteLink();
     }
 
     private _updateChosenDeckInfo(chosenDeck: Deck) {
@@ -478,11 +581,6 @@ export class CardUI {
         );
     }
 
-    private _updateSourceNoteLink() {
-        if (!this.sourceNoteLink) return;
-        this.sourceNoteLink.setText(this._currentNote.filePath);
-    }
-
     private _formatQuestionContextText(questionContext: string[]): string {
         const separator: string = " > ";
         let result = this._currentNote.file.basename;
@@ -504,6 +602,7 @@ export class CardUI {
 
     private _createResponseButtons() {
         this._createShowAnswerButton();
+        this._createAgainButton();
         this._createHardButton();
         this._createGoodButton();
         this._createEasyButton();
@@ -512,9 +611,13 @@ export class CardUI {
     private _resetResponseButtons() {
         // Sets all buttons in to their default state
         this.answerButton.removeClass("sr-is-hidden");
+        this.againButton.addClass("sr-is-hidden");
         this.hardButton.addClass("sr-is-hidden");
         this.goodButton.addClass("sr-is-hidden");
         this.easyButton.addClass("sr-is-hidden");
+
+        // Restore reset button visibility (may have been hidden for FSRS)
+        this.resetButton.removeClass("sr-is-hidden");
     }
 
     private _createShowAnswerButton() {
@@ -523,6 +626,20 @@ export class CardUI {
         this.answerButton.setText(t("SHOW_ANSWER"));
         this.answerButton.addEventListener("click", () => {
             this._showAnswer();
+        });
+    }
+
+    private _createAgainButton() {
+        this.againButton = this.response.createEl("button");
+        this.againButton.addClasses([
+            "sr-response-button",
+            "sr-again-button",
+            "sr-bg-orange",
+            "sr-is-hidden",
+        ]);
+        this.againButton.setText(this.settings.flashcardAgainText);
+        this.againButton.addEventListener("click", () => {
+            this._processReview(ReviewResponse.Reset);
         });
     }
 
@@ -577,7 +694,16 @@ export class CardUI {
             reviewResponse,
             this._currentCard,
         );
-        const interval: number = schedule.interval;
+        let interval: number = schedule.interval;
+
+        // For FSRS learning cards, scheduled_days is 0 but the real interval
+        // is embedded in the due date. Compute fractional days for display.
+        if (schedule instanceof RepItemScheduleInfoFsrs && interval === 0 && schedule.dueDate) {
+            const diffMs = schedule.dueDate.valueOf() - Date.now();
+            if (diffMs > 0) {
+                interval = diffMs / TICKS_PER_DAY;
+            }
+        }
 
         if (this.settings.showIntervalInReviewButtons) {
             if (Platform.isMobile) {
@@ -600,33 +726,89 @@ export class CardUI {
         }
         this.lastPressed = timeNow;
 
-        this.mode = FlashcardMode.Back;
+        // Handle staged reveal for image occlusion
+        if (
+            this._ioCardData &&
+            this._ioCardData.occlusionData.mode === OcclusionMode.StagedReveal
+        ) {
+            const rects = this._ioCardData.occlusionData.rects;
+            if (this._ioStagedRevealCount < rects.length) {
+                // Reveal the next rectangle
+                const rect = rects[this._ioStagedRevealCount];
+                if (this._ioContainer) {
+                    ImageOcclusionRenderer.revealRect(
+                        this._ioContainer,
+                        this._ioStagedRevealCount,
+                        rect.label,
+                    );
+                }
+                this._ioStagedRevealCount++;
 
-        this.resetButton.disabled = false;
-
-        // Show answer text
-        if (this._currentQuestion.questionType !== CardType.Cloze) {
-            const hr: HTMLElement = document.createElement("hr");
-            this.content.appendChild(hr);
-        } else {
+                // If all revealed, show response buttons
+                if (this._ioStagedRevealCount >= rects.length) {
+                    this.mode = FlashcardMode.Back;
+                    this.resetButton.disabled = false;
+                    this.answerButton.setText(t("SHOW_ANSWER"));
+                    // Fall through to show response buttons below
+                } else {
+                    // More rects to reveal, stay in front mode
+                    return;
+                }
+            }
+        } else if (this._ioCardData) {
+            // HideAllRevealOne: re-render with current rect revealed
+            this.mode = FlashcardMode.Back;
+            this.resetButton.disabled = false;
             this.content.empty();
-        }
 
-        const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
-            this.app,
-            this.plugin,
-            this._currentNote.filePath,
-        );
-        wrapper.renderMarkdownWrapper(
-            this._currentCard.back,
-            this.content,
-            this._currentQuestion.questionText.textDirection,
-        );
+            const imageUrl = this._resolveIOImageUrl(this._ioCardData.occlusionData.imagePath);
+            const maskColor = this.settings.imageOcclusionMaskColor ?? "#ff6b35";
+            const revealedSet = new Set([this._ioCardData.cardIndex]);
+
+            this._ioContainer = ImageOcclusionRenderer.render(
+                this.content,
+                imageUrl,
+                this._ioCardData.occlusionData.rects,
+                revealedSet,
+                maskColor,
+            );
+
+            // Show label below image if available
+            const revealedRect = this._ioCardData.occlusionData.rects[this._ioCardData.cardIndex];
+            if (revealedRect?.label) {
+                const labelDiv = this.content.createDiv({ cls: "sr-io-answer-label" });
+                labelDiv.setText(revealedRect.label);
+            }
+        } else {
+            this.mode = FlashcardMode.Back;
+            this.resetButton.disabled = false;
+
+            // Show answer text
+            if (this._currentQuestion.questionType !== CardType.Cloze) {
+                const hr: HTMLElement = document.createElement("hr");
+                this.content.appendChild(hr);
+            } else {
+                this.content.empty();
+            }
+
+            const wrapper: RenderMarkdownWrapper = new RenderMarkdownWrapper(
+                this.app,
+                this.plugin,
+                this._currentNote.filePath,
+            );
+            wrapper.renderMarkdownWrapper(
+                this._currentCard.back,
+                this.content,
+                this._currentQuestion.questionText.textDirection,
+            );
+        }
 
         // Show response buttons
         this.answerButton.addClass("sr-is-hidden");
         this.hardButton.removeClass("sr-is-hidden");
         this.easyButton.removeClass("sr-is-hidden");
+
+        const isFsrs = this.settings.algorithm === Algorithm.FSRS;
 
         if (this.reviewMode === FlashcardReviewMode.Cram) {
             this.response.addClass("is-cram");
@@ -634,6 +816,18 @@ export class CardUI {
             this.easyButton.setText(`${this.settings.flashcardEasyText}`);
         } else {
             this.goodButton.removeClass("sr-is-hidden");
+
+            if (isFsrs) {
+                // FSRS: show 4 buttons (Again, Hard, Good, Easy) and hide Reset icon
+                this.againButton.removeClass("sr-is-hidden");
+                this.resetButton.addClass("sr-is-hidden");
+                this._setupEaseButton(
+                    this.againButton,
+                    this.settings.flashcardAgainText,
+                    ReviewResponse.Reset,
+                );
+            }
+
             this._setupEaseButton(
                 this.hardButton,
                 this.settings.flashcardHardText,
@@ -667,6 +861,8 @@ export class CardUI {
             e.stopPropagation();
         };
 
+        const isFsrs = this.settings.algorithm === Algorithm.FSRS;
+
         switch (e.code) {
             case "KeyS":
                 this._skipCurrentCard();
@@ -694,7 +890,8 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Hard);
+                // FSRS: 1=Again, SM-2: 1=Hard
+                this._processReview(isFsrs ? ReviewResponse.Reset : ReviewResponse.Hard);
                 consumeKeyEvent();
                 break;
             case "Numpad2":
@@ -702,7 +899,8 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Good);
+                // FSRS: 2=Hard, SM-2: 2=Good
+                this._processReview(isFsrs ? ReviewResponse.Hard : ReviewResponse.Good);
                 consumeKeyEvent();
                 break;
             case "Numpad3":
@@ -710,16 +908,31 @@ export class CardUI {
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Easy);
+                // FSRS: 3=Good, SM-2: 3=Easy
+                this._processReview(isFsrs ? ReviewResponse.Good : ReviewResponse.Easy);
                 consumeKeyEvent();
+                break;
+            case "Numpad4":
+            case "Digit4":
+                if (this.mode !== FlashcardMode.Back) {
+                    break;
+                }
+                // FSRS: 4=Easy (SM-2 doesn't use Digit4)
+                if (isFsrs) {
+                    this._processReview(ReviewResponse.Easy);
+                    consumeKeyEvent();
+                }
                 break;
             case "Numpad0":
             case "Digit0":
                 if (this.mode !== FlashcardMode.Back) {
                     break;
                 }
-                this._processReview(ReviewResponse.Reset);
-                consumeKeyEvent();
+                // SM-2 only: 0=Reset (FSRS uses 1 for Again)
+                if (!isFsrs) {
+                    this._processReview(ReviewResponse.Reset);
+                    consumeKeyEvent();
+                }
                 break;
             default:
                 break;

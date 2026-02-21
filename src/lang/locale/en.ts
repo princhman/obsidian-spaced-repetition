@@ -10,6 +10,7 @@ export default {
     SKIP: "Skip",
     EDIT_CARD: "Edit Card",
     RESET_CARD_PROGRESS: "Reset card's progress",
+    AGAIN: "Again",
     HARD: "Hard",
     GOOD: "Good",
     EASY: "Easy",
@@ -22,6 +23,10 @@ export default {
     CURRENT_INTERVAL_HELP_TEXT: "Current Interval: ",
     CARD_GENERATED_FROM: "Generated from: ${notePath}",
     NOT_A_FLASHCARD: "Not a flashcard",
+    SUSPEND_CARD: "Suspend card",
+    IGNORE_THIS_FOLDER: "Ignore this folder",
+    IGNORE_THIS_FILE: "Ignore this file",
+    IGNORED_PATH_ADDED: "Added to ignored paths: ${path}",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "Open a note for review",
@@ -43,15 +48,19 @@ export default {
     ALL_CAUGHT_UP: "You're all caught up now :D.",
 
     // scheduling.ts
+    MINUTES_STR_IVL: "${interval} min(s)",
+    HOURS_STR_IVL: "${interval} hour(s)",
     DAYS_STR_IVL: "${interval} day(s)",
     MONTHS_STR_IVL: "${interval} month(s)",
     YEARS_STR_IVL: "${interval} year(s)",
+    MINUTES_STR_IVL_MOBILE: "${interval}min",
+    HOURS_STR_IVL_MOBILE: "${interval}h",
     DAYS_STR_IVL_MOBILE: "${interval}d",
     MONTHS_STR_IVL_MOBILE: "${interval}m",
     YEARS_STR_IVL_MOBILE: "${interval}y",
 
     // settings.ts
-    SETTINGS_HEADER: "Spaced Repetition",
+    SETTINGS_HEADER: "Mnemo",
     GROUP_TAGS_FOLDERS: "Tags & Folders",
     GROUP_FLASHCARD_REVIEW: "Flashcard Review",
     GROUP_FLASHCARD_SEPARATORS: "Flashcard Separators",
@@ -81,6 +90,8 @@ export default {
     FLASHCARD_EASY_DESC: 'Customize the label for the "Easy" Button',
     FLASHCARD_GOOD_DESC: 'Customize the label for the "Good" Button',
     FLASHCARD_HARD_DESC: 'Customize the label for the "Hard" Button',
+    FLASHCARD_AGAIN_LABEL: "Again Button Text",
+    FLASHCARD_AGAIN_DESC: 'Customize the label for the "Again" Button (FSRS only)',
     REVIEW_BUTTON_DELAY: "Button Press Delay (ms)",
     REVIEW_BUTTON_DELAY_DESC: "Add a delay to the review buttons before they can be pressed again.",
     FLASHCARD_TAGS: "Flashcard tags",
@@ -164,10 +175,22 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Deck trees should be initially displayed as expanded",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Turn this off to collapse nested decks in the same card. Useful if you have cards which belong to many decks in the same file.",
+    SHOW_NOTES_IN_DECK_TREE: "Show source notes in deck tree",
+    SHOW_NOTES_IN_DECK_TREE_DESC:
+        "When enabled, leaf decks show their cards grouped by source note.",
     ALGORITHM: "Algorithm",
     CHECK_ALGORITHM_WIKI:
         'For more information, check the <a href="${algoUrl}">algorithm details</a>.',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Base ease",
     BASE_EASE_DESC: "minimum = 130, preferrably approximately 250.",
     BASE_EASE_MIN_WARNING: "The base ease must be at least 130.",
@@ -232,4 +255,18 @@ export default {
     SEARCH: "Search",
     PREVIOUS: "Previous",
     NEXT: "Next",
+
+    // image-occlusion
+    DELETE: "Delete",
+    IMAGE_OCCLUSION: "Image Occlusion",
+    IMAGE_OCCLUSION_CREATE: "Create Image Occlusion",
+    IMAGE_OCCLUSION_MASK_COLOR: "Mask color",
+    IMAGE_OCCLUSION_MASK_COLOR_DESC: "The color used to mask occluded regions",
+    IMAGE_OCCLUSION_DEFAULT_MODE: "Default occlusion mode",
+    IMAGE_OCCLUSION_DEFAULT_MODE_DESC: "The default mode when creating new image occlusion cards",
+    IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE: "Hide All, Reveal One",
+    IMAGE_OCCLUSION_STAGED_REVEAL: "Staged Reveal",
+    IMAGE_OCCLUSION_REVEAL_NEXT: "Reveal Next",
+    IMAGE_OCCLUSION_NAME: "Name",
+    IMAGE_OCCLUSION_NAME_PLACEHOLDER: "e.g. Squeeze theorem, Subset definition...",
 };

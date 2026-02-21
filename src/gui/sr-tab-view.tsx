@@ -133,6 +133,7 @@ export class SRTabView extends ItemView {
                     this.viewContentEl.createDiv(),
                     this._showDecksList.bind(this),
                     this._doEditQuestionText.bind(this),
+                    () => this.leaf.detach(),
                 );
             }
 
@@ -180,8 +181,12 @@ export class SRTabView extends ItemView {
         this.flashcardView.hide();
     }
 
-    private _startReviewOfDeck(deck: Deck) {
-        this.reviewSequencer.setCurrentDeck(deck.getTopicPath());
+    private _startReviewOfDeck(deck: Deck, noteFilePath?: string) {
+        if (noteFilePath) {
+            this.reviewSequencer.setCurrentDeckFilteredByNote(deck.getTopicPath(), noteFilePath);
+        } else {
+            this.reviewSequencer.setCurrentDeck(deck.getTopicPath());
+        }
         if (this.reviewSequencer.hasCurrentCard) {
             this.backButton.removeClass("sr-is-hidden");
             this._showFlashcard(deck);
@@ -203,7 +208,8 @@ export class SRTabView extends ItemView {
         );
         editModal
             .then(async (modifiedCardText) => {
-                this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.reviewSequencer.updateCurrentQuestionText(modifiedCardText);
+                await this.flashcardView.refresh();
             })
             .catch((reason) => console.log(reason));
     }

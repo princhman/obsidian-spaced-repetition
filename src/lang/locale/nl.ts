@@ -10,6 +10,7 @@ export default {
     SKIP: "Overslaan",
     EDIT_CARD: "Kaart bewerken",
     RESET_CARD_PROGRESS: "Voortgang van kaart resetten",
+    AGAIN: "",
     HARD: "Moeilijk",
     GOOD: "Goed",
     EASY: "Gemakkelijk",
@@ -22,6 +23,10 @@ export default {
     CURRENT_INTERVAL_HELP_TEXT: "Huidige Interval: ",
     CARD_GENERATED_FROM: "Gegenereerd van: ${notePath}",
     NOT_A_FLASHCARD: "Not a flashcard",
+    SUSPEND_CARD: "Suspend card",
+    IGNORE_THIS_FOLDER: "Ignore this folder",
+    IGNORE_THIS_FILE: "Ignore this file",
+    IGNORED_PATH_ADDED: "Added to ignored paths: ${path}",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "Open een notitie voor beoordeling",
@@ -45,9 +50,13 @@ export default {
     ALL_CAUGHT_UP: "Je bent nu helemaal bij :D.",
 
     // scheduling.ts
+    MINUTES_STR_IVL: "",
+    HOURS_STR_IVL: "",
     DAYS_STR_IVL: "${interval} dag(en)",
     MONTHS_STR_IVL: "${interval} maand(en)",
     YEARS_STR_IVL: "${interval} jaar",
+    MINUTES_STR_IVL_MOBILE: "",
+    HOURS_STR_IVL_MOBILE: "",
     DAYS_STR_IVL_MOBILE: "${interval}d",
     MONTHS_STR_IVL_MOBILE: "${interval}m",
     YEARS_STR_IVL_MOBILE: "${interval}j",
@@ -83,6 +92,8 @@ export default {
     FLASHCARD_EASY_DESC: 'Pas het label aan voor de "Gemakkelijk" knop',
     FLASHCARD_GOOD_DESC: 'Pas het label aan voor de "Goed" knop',
     FLASHCARD_HARD_DESC: 'Pas het label aan voor de "Moeilijk" knop',
+    FLASHCARD_AGAIN_LABEL: "",
+    FLASHCARD_AGAIN_DESC: "",
     REVIEW_BUTTON_DELAY: "Vertraging knopindrukken (ms)",
     REVIEW_BUTTON_DELAY_DESC:
         "Voeg een vertraging toe aan de beoordelingsknoppen voordat ze opnieuw kunnen worden ingedrukt.",
@@ -175,10 +186,21 @@ export default {
     INITIALLY_EXPAND_SUBDECKS_IN_TREE: "Stapelstructuren: Vouw substapels aanvankelijk uit",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Schakel dit uit om geneste stapels in dezelfde kaart samen te vouwen. Handig als je kaarten hebt die tot meerdere stapels in hetzelfde bestand behoren.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algoritme",
     CHECK_ALGORITHM_WIKI:
         'Voor meer informatie, bekijk de <a href="${algoUrl}">algoritmedetails</a>.',
     SM2_OSR_VARIANT: "OSR's variant van SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Basisgemak",
     BASE_EASE_DESC: "minimum = 130, bij voorkeur ongeveer 250.",
     BASE_EASE_MIN_WARNING: "Het basisgemak moet minimaal 130 zijn.",
@@ -246,4 +268,16 @@ export default {
     SEARCH: "Zoeken",
     PREVIOUS: "Vorige",
     NEXT: "Volgende",
+    DELETE: "Delete",
+    IMAGE_OCCLUSION: "Image Occlusion",
+    IMAGE_OCCLUSION_CREATE: "Create Image Occlusion",
+    IMAGE_OCCLUSION_MASK_COLOR: "Mask color",
+    IMAGE_OCCLUSION_MASK_COLOR_DESC: "The color used to mask occluded regions",
+    IMAGE_OCCLUSION_DEFAULT_MODE: "Default occlusion mode",
+    IMAGE_OCCLUSION_DEFAULT_MODE_DESC: "The default mode when creating new image occlusion cards",
+    IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE: "Hide All, Reveal One",
+    IMAGE_OCCLUSION_STAGED_REVEAL: "Staged Reveal",
+    IMAGE_OCCLUSION_REVEAL_NEXT: "Reveal Next",
+    IMAGE_OCCLUSION_NAME: "Name",
+    IMAGE_OCCLUSION_NAME_PLACEHOLDER: "e.g. Squeeze theorem, Subset definition...",
 };

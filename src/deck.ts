@@ -307,7 +307,9 @@ export class Deck {
 
 export class DeckTreeFilter {
     static filterForReviewableCards(reviewableDeckTree: Deck): Deck {
-        return reviewableDeckTree.copyWithCardFilter((card) => !card.question.hasEditLaterTag);
+        return reviewableDeckTree.copyWithCardFilter(
+            (card) => !card.question.hasEditLaterTag && !card.question.hasSuspendedTag,
+        );
     }
 
     static filterForRemainingCards(

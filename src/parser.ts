@@ -156,9 +156,21 @@ export function parse(text: string, options: ParserOptions): ParsedQuestionInfo[
             firstLineNo = i;
 
             // Pick up scheduling information if present
-            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR:")) {
+            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR")) {
                 cardText += "\n" + lines[i + 1];
                 i++;
+            } else if (i + 1 < lines.length && lines[i + 1].trim() === "```mnemo") {
+                // Pick up mnemo scheduling block
+                i++;
+                cardText += "\n" + lines[i];
+                while (i + 1 < lines.length && !lines[i + 1].trim().startsWith("```")) {
+                    i++;
+                    cardText += "\n" + lines[i];
+                }
+                if (i + 1 < lines.length) {
+                    i++;
+                    cardText += "\n" + lines[i]; // closing ```
+                }
             }
 
             lastLineNo = i;
@@ -178,6 +190,45 @@ export function parse(text: string, options: ParserOptions): ParsedQuestionInfo[
                 // Pick up multiline basic cards
                 cardType = CardType.MultiLineReversed;
             }
+        } else if (currentTrimmed === "```sr-occlusion") {
+            // Pick up image occlusion blocks
+            const occlusionStart = i;
+            let occlusionText = currentLine;
+            i++;
+            while (i < lines.length && !lines[i].trim().startsWith("```")) {
+                occlusionText += "\n" + lines[i];
+                i++;
+            }
+            if (i < lines.length) {
+                occlusionText += "\n" + lines[i]; // closing ```
+            }
+
+            // Pick up scheduling information if present on the next line
+            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR")) {
+                occlusionText += "\n" + lines[i + 1];
+                i++;
+            } else if (i + 1 < lines.length && lines[i + 1].trim() === "```mnemo") {
+                // Pick up mnemo scheduling block
+                i++;
+                occlusionText += "\n" + lines[i];
+                while (i + 1 < lines.length && !lines[i + 1].trim().startsWith("```")) {
+                    i++;
+                    occlusionText += "\n" + lines[i];
+                }
+                if (i + 1 < lines.length) {
+                    i++;
+                    occlusionText += "\n" + lines[i]; // closing ```
+                }
+            }
+
+            cards.push(
+                new ParsedQuestionInfo(CardType.ImageOcclusion, occlusionText, occlusionStart, i),
+            );
+
+            // Reset state for next card
+            cardType = null;
+            cardText = "";
+            firstLineNo = i + 1;
         } else if (currentLine.startsWith("```") || currentLine.startsWith("~~~")) {
             // Pick up codeblocks
             const codeBlockClose = currentLine.match(/`+|~+/)[0];

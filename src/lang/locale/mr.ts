@@ -1,3 +1,1 @@
-// Marathi
-
 export default {};

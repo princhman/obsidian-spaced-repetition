@@ -1,11 +1,15 @@
-import { Menu, Notice, Plugin, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
+import { Menu, Notice, Plugin, SuggestModal, TAbstractFile, TFile, WorkspaceLeaf } from "obsidian";
 
+import { Algorithm } from "src/algorithms/base/isrs-algorithm";
 import { ReviewResponse } from "src/algorithms/base/repetition-item";
 import { SrsAlgorithm } from "src/algorithms/base/srs-algorithm";
+import { SrsAlgorithmFsrs } from "src/algorithms/fsrs/srs-algorithm-fsrs";
 import { ObsidianVaultNoteLinkInfoFinder } from "src/algorithms/osr/obsidian-vault-notelink-info-finder";
 import { SrsAlgorithmOsr } from "src/algorithms/osr/srs-algorithm-osr";
+import { IMAGE_FORMATS, PREFERRED_DATE_FORMAT } from "src/constants";
 import { OsrAppCore } from "src/core";
 import { DataStoreAlgorithm } from "src/data-store-algorithm/data-store-algorithm";
+import { DataStoreInNoteAlgorithmFsrs } from "src/data-store-algorithm/data-store-in-note-algorithm-fsrs";
 import { DataStoreInNoteAlgorithmOsr } from "src/data-store-algorithm/data-store-in-note-algorithm-osr";
 import { DataStore } from "src/data-stores/base/data-store";
 import { StoreInNotes } from "src/data-stores/notes/notes";
@@ -23,6 +27,7 @@ import {
     FlashcardReviewSequencer,
     IFlashcardReviewSequencer,
 } from "src/flashcard-review-sequencer";
+import { ImageOcclusionEditorModal } from "src/gui/image-occlusion-editor";
 import { REVIEW_QUEUE_VIEW_TYPE } from "src/gui/review-queue-list-view";
 import { SRSettingTab } from "src/gui/settings";
 import { OsrSidebar } from "src/gui/sidebar";
@@ -30,7 +35,13 @@ import { FlashcardModal } from "src/gui/sr-modal";
 import { SRTabView } from "src/gui/sr-tab-view";
 import TabViewManager from "src/gui/tab-view-manager";
 import { appIcon } from "src/icons/app-icon";
+import {
+    OcclusionMode,
+    parseOcclusionBlock,
+    serializeOcclusionCodeBlock,
+} from "src/image-occlusion";
 import { t } from "src/lang/helpers";
+import { parseMnemoBlock } from "src/mnemo-block";
 import { NextNoteReviewHandler } from "src/next-note-review-handler";
 import { Note } from "src/note";
 import { NoteFileLoader } from "src/note-file-loader";
@@ -117,6 +128,134 @@ export default class SRPlugin extends Plugin {
         this.addSettingTab(new SRSettingTab(this.app, this));
 
         this.registerSRFocusListener();
+
+        this._registerOcclusionCodeBlockProcessor();
+        this._registerMnemoCodeBlockProcessor();
+    }
+
+    private _registerOcclusionCodeBlockProcessor(): void {
+        this.registerMarkdownCodeBlockProcessor("sr-occlusion", (source, el) => {
+            const data = parseOcclusionBlock(source);
+            if (!data) {
+                el.createEl("code", { text: source });
+                return;
+            }
+
+            const container = el.createDiv({ cls: "sr-io-block-container" });
+
+            // Collapsed summary header
+            const header = container.createDiv({ cls: "sr-io-block-header" });
+            const toggle = header.createSpan({ cls: "sr-io-block-toggle" });
+            toggle.setText("\u25B6"); // right-pointing triangle
+            const headerText = data.name
+                ? `${data.name} (${data.rects.length} regions)`
+                : `${t("IMAGE_OCCLUSION")} (${data.rects.length} regions)`;
+            header.createSpan({
+                cls: "sr-io-block-label",
+                text: headerText,
+            });
+
+            // Expandable body
+            const body = container.createDiv({ cls: "sr-io-block-body sr-is-hidden" });
+
+            // Render a preview image with rectangles
+            const preview = body.createDiv({ cls: "sr-io-block-preview" });
+            const imgPath = data.imagePath;
+            // Resolve image
+            let filePath: string;
+            const wikiMatch = imgPath.match(/!\[\[([^\]]+)\]\]/);
+            if (wikiMatch) {
+                filePath = wikiMatch[1];
+                const pipeIdx = filePath.indexOf("|");
+                if (pipeIdx !== -1) filePath = filePath.substring(0, pipeIdx);
+            } else {
+                const mdMatch = imgPath.match(/!\[.*?\]\((.+?)\)/);
+                filePath = mdMatch ? mdMatch[1] : imgPath;
+            }
+
+            const target = this.app.metadataCache.getFirstLinkpathDest(filePath, "");
+            if (target) {
+                const imgUrl = this.app.vault.getResourcePath(target);
+                const imgWrapper = preview.createDiv({ cls: "sr-io-container" });
+                imgWrapper.createEl("img", {
+                    cls: "sr-io-image",
+                    attr: { src: imgUrl },
+                });
+
+                const overlay = imgWrapper.createDiv({ cls: "sr-io-overlay" });
+                data.rects.forEach((rect, idx) => {
+                    const rectEl = overlay.createDiv({ cls: "sr-io-rect" });
+                    rectEl.style.left = `${rect.x}%`;
+                    rectEl.style.top = `${rect.y}%`;
+                    rectEl.style.width = `${rect.w}%`;
+                    rectEl.style.height = `${rect.h}%`;
+                    rectEl.style.backgroundColor =
+                        this.data.settings.imageOcclusionMaskColor ?? "#ff6b35";
+                    const badge = rectEl.createDiv({ cls: "sr-io-rect-badge" });
+                    badge.setText(String(idx + 1));
+                });
+            }
+
+            // Mode info
+            const modeInfo = body.createDiv({ cls: "sr-io-block-info" });
+            const modeName =
+                data.mode === OcclusionMode.StagedReveal
+                    ? t("IMAGE_OCCLUSION_STAGED_REVEAL")
+                    : t("IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE");
+            modeInfo.setText(`Mode: ${modeName}`);
+
+            // Toggle click handler
+            header.addEventListener("click", () => {
+                const isHidden = body.hasClass("sr-is-hidden");
+                if (isHidden) {
+                    body.removeClass("sr-is-hidden");
+                    toggle.setText("\u25BC"); // down-pointing triangle
+                } else {
+                    body.addClass("sr-is-hidden");
+                    toggle.setText("\u25B6"); // right-pointing triangle
+                }
+            });
+        });
+    }
+
+    private _registerMnemoCodeBlockProcessor(): void {
+        this.registerMarkdownCodeBlockProcessor("mnemo", (source, el) => {
+            const block = parseMnemoBlock(source);
+            if (!block || block.cards.length === 0) {
+                el.createEl("code", { text: source });
+                return;
+            }
+
+            const container = el.createDiv({ cls: "sr-mnemo-block" });
+            const stateNames = ["New", "Learning", "Review", "Relearning"];
+
+            for (let i = 0; i < block.cards.length; i++) {
+                const card = block.cards[i];
+                if (card.isNew) continue;
+
+                const row = container.createDiv({ cls: "sr-mnemo-card" });
+                if (block.cards.length > 1) {
+                    const label = this.getCardLabel(block.type, i);
+                    row.createSpan({ text: `${label}: `, cls: "sr-mnemo-label" });
+                }
+                row.createSpan({
+                    text: `Due ${card.due}`,
+                    cls: "sr-mnemo-due",
+                });
+                const stateLabel = stateNames[card.state ?? 0] || `State ${card.state}`;
+                row.createSpan({
+                    text: ` \u00B7 ${stateLabel}`,
+                    cls: "sr-mnemo-state",
+                });
+            }
+        });
+    }
+
+    private getCardLabel(type: string | undefined, index: number): string {
+        if (type === "reversed") {
+            return index === 0 ? "Front\u2192Back" : "Back\u2192Front";
+        }
+        return `C${index}`;
     }
 
     showFileMenuItems(status: boolean) {
@@ -306,6 +445,14 @@ export default class SRPlugin extends Plugin {
             name: t("OPEN_REVIEW_QUEUE_VIEW"),
             callback: async () => {
                 await this.osrSidebar.openReviewQueueView();
+            },
+        });
+
+        this.addCommand({
+            id: "srs-create-image-occlusion",
+            name: t("IMAGE_OCCLUSION_CREATE"),
+            callback: async () => {
+                await this._createImageOcclusion();
             },
         });
     }
@@ -498,14 +645,23 @@ export default class SRPlugin extends Plugin {
             return;
         }
 
-        //
         await this.osrAppCore.saveNoteReviewResponse(noteSrTFile, response, this.data.settings);
+        this.recordReview();
 
         new Notice(t("RESPONSE_RECEIVED"));
 
         if (this.data.settings.autoNextNote) {
             this.nextNoteReviewHandler.autoReviewNextNote();
         }
+    }
+
+    recordReview(): void {
+        const today = window.moment().format(PREFERRED_DATE_FORMAT);
+        if (!this.data.reviewHistory) {
+            this.data.reviewHistory = {};
+        }
+        this.data.reviewHistory[today] = (this.data.reviewHistory[today] || 0) + 1;
+        this.savePluginData();
     }
 
     createSrTFile(note: TFile): SrTFile {
@@ -523,10 +679,15 @@ export default class SRPlugin extends Plugin {
     }
 
     setupDataStoreAndAlgorithmInstances(settings: SRSettings) {
-        // For now we can hardcode as we only support the one data store and one algorithm
         DataStore.instance = new StoreInNotes(settings);
-        SrsAlgorithm.instance = new SrsAlgorithmOsr(settings);
-        DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmOsr(settings);
+
+        if (settings.algorithm === Algorithm.FSRS) {
+            SrsAlgorithm.instance = new SrsAlgorithmFsrs(settings);
+            DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmFsrs(settings);
+        } else {
+            SrsAlgorithm.instance = new SrsAlgorithmOsr(settings);
+            DataStoreAlgorithm.instance = new DataStoreInNoteAlgorithmOsr(settings);
+        }
     }
     async savePluginData(): Promise<void> {
         await this.saveData(this.data);
@@ -573,5 +734,90 @@ export default class SRPlugin extends Plugin {
         } else {
             this.statusBar.style.display = "none";
         }
+    }
+
+    private async _createImageOcclusion(): Promise<void> {
+        // Get all image files in the vault
+        const imageFiles = this.app.vault
+            .getFiles()
+            .filter((f) => IMAGE_FORMATS.includes(f.extension));
+
+        if (imageFiles.length === 0) {
+            new Notice("No image files found in vault");
+            return;
+        }
+
+        // Show a picker for the image file
+        const picker = new ImageFilePicker(this.app, imageFiles);
+        const selectedFile = await picker.waitForSelection;
+        if (!selectedFile) return;
+
+        const imageUrl = this.app.vault.getResourcePath(selectedFile);
+        const imagePath = `![[${selectedFile.name}]]`;
+        const defaultMode =
+            (this.data.settings.imageOcclusionDefaultMode as OcclusionMode) ??
+            OcclusionMode.HideAllRevealOne;
+
+        const result = await ImageOcclusionEditorModal.Prompt(
+            this.app,
+            imageUrl,
+            imagePath,
+            undefined,
+            defaultMode,
+        );
+
+        if (!result) return;
+
+        // Insert the occlusion code block into the active note
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+            new Notice("No active file to insert image occlusion");
+            return;
+        }
+
+        const codeBlock = serializeOcclusionCodeBlock(result);
+        const editor = this.app.workspace.activeEditor?.editor;
+        if (editor) {
+            const cursor = editor.getCursor();
+            editor.replaceRange("\n" + codeBlock + "\n", cursor);
+        } else {
+            // Fallback: append to file
+            await this.app.vault.append(activeFile, "\n" + codeBlock + "\n");
+        }
+    }
+}
+
+class ImageFilePicker extends SuggestModal<TFile> {
+    private files: TFile[];
+    public waitForSelection: Promise<TFile | null>;
+    private resolvePromise: (file: TFile | null) => void;
+
+    constructor(app: App, files: TFile[]) {
+        super(app);
+        this.files = files;
+        this.waitForSelection = new Promise((resolve) => {
+            this.resolvePromise = resolve;
+        });
+        this.setPlaceholder("Select an image file...");
+        this.open();
+    }
+
+    getSuggestions(query: string): TFile[] {
+        const lower = query.toLowerCase();
+        return this.files.filter((f) => f.path.toLowerCase().includes(lower));
+    }
+
+    renderSuggestion(file: TFile, el: HTMLElement): void {
+        el.createEl("div", { text: file.name });
+        el.createEl("small", { text: file.path, cls: "sr-suggestion-path" });
+    }
+
+    onChooseSuggestion(file: TFile): void {
+        this.resolvePromise(file);
+    }
+
+    onClose(): void {
+        // If no selection was made, resolve with null
+        setTimeout(() => this.resolvePromise(null), 100);
     }
 }

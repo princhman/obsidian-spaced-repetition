@@ -13,6 +13,7 @@ export default {
     SKIP: "Überspringen",
     EDIT_CARD: "Karte bearbeiten",
     RESET_CARD_PROGRESS: "Kartenfortschritt zurücksetzten",
+    AGAIN: "",
     HARD: "Schwer",
     GOOD: "Gut",
     EASY: "Einfach",
@@ -25,6 +26,10 @@ export default {
     CURRENT_INTERVAL_HELP_TEXT: "Aktueller Intervall: ",
     CARD_GENERATED_FROM: "Erstellt von: ${notePath}",
     NOT_A_FLASHCARD: "Not a flashcard",
+    SUSPEND_CARD: "Suspend card",
+    IGNORE_THIS_FOLDER: "Ignore this folder",
+    IGNORE_THIS_FILE: "Ignore this file",
+    IGNORED_PATH_ADDED: "Added to ignored paths: ${path}",
 
     // main.ts
     OPEN_NOTE_FOR_REVIEW: "Notiz zur Wiederholung öffnen",
@@ -49,9 +54,13 @@ export default {
     ALL_CAUGHT_UP: "Yuhu! Alles geschafft! :D.",
 
     // scheduling.ts
+    MINUTES_STR_IVL: "",
+    HOURS_STR_IVL: "",
     DAYS_STR_IVL: "${interval} Tag(e)",
     MONTHS_STR_IVL: "${interval} Monat(e)",
     YEARS_STR_IVL: "${interval} Jahr(e)",
+    MINUTES_STR_IVL_MOBILE: "",
+    HOURS_STR_IVL_MOBILE: "",
     DAYS_STR_IVL_MOBILE: "${interval}t",
     MONTHS_STR_IVL_MOBILE: "${interval}m",
     YEARS_STR_IVL_MOBILE: "${interval}j",
@@ -87,6 +96,8 @@ export default {
     FLASHCARD_GOOD_DESC: 'Passe die Beschriftung für "Gut" Knopf an',
     FLASHCARD_EASY_DESC: 'Passe die Beschriftung für "Einfach" Knopf an',
     FLASHCARD_HARD_DESC: 'Passe die Beschriftung für "Schwer" Knopf an',
+    FLASHCARD_AGAIN_LABEL: "",
+    FLASHCARD_AGAIN_DESC: "",
     REVIEW_BUTTON_DELAY: "Druckknopfverzögerung (ms)",
     REVIEW_BUTTON_DELAY_DESC:
         "Fügt den Überprüfungsschaltflächen („Einfach“, „Gut“, „Schwer“, „Antwort anzeigen“) eine Verzögerung hinzu, bevor sie erneut gedrückt werden können.",
@@ -182,10 +193,21 @@ export default {
         "Stapelverzeichnis soll beim öffnen erweitert angezeigt werden",
     INITIALLY_EXPAND_SUBDECKS_IN_TREE_DESC:
         "Deaktivieren Sie dies, um verschachtelte Stapel in derselben Karte zu reduzieren. Nützlich, wenn Sie Karten haben, die zu vielen Stapeln in derselben Datei gehören.",
+    SHOW_NOTES_IN_DECK_TREE: "",
+    SHOW_NOTES_IN_DECK_TREE_DESC: "",
     ALGORITHM: "Algorithmus",
     CHECK_ALGORITHM_WIKI:
         'Weiterführende Informationen: <a href="${algoUrl}">Implementierung des Algorithmus</a> (english).',
     SM2_OSR_VARIANT: "OSR's variant of SM-2",
+    FSRS_VARIANT: "FSRS (Free Spaced Repetition Scheduler)",
+    FSRS_REQUEST_RETENTION: "Desired retention",
+    FSRS_REQUEST_RETENTION_DESC:
+        "The probability of recalling a card when it is due. Higher values mean more frequent reviews (default = 90%).",
+    FSRS_ENABLE_FUZZ: "Enable fuzz",
+    FSRS_ENABLE_FUZZ_DESC:
+        "Slightly randomizes intervals to prevent cards from clustering on the same day.",
+    FSRS_STABILITY: "Stability",
+    FSRS_DIFFICULTY: "Difficulty",
     BASE_EASE: "Basis der Schwierigkeit",
     BASE_EASE_DESC: "Minimum ist 130. Empfohlen wird ca. 250.",
     BASE_EASE_MIN_WARNING: "Basis der Schwierigkeit muss mindestens 130 sein.",
@@ -252,4 +274,16 @@ export default {
     SEARCH: "Search",
     PREVIOUS: "Previous",
     NEXT: "Next",
+    DELETE: "Delete",
+    IMAGE_OCCLUSION: "Image Occlusion",
+    IMAGE_OCCLUSION_CREATE: "Create Image Occlusion",
+    IMAGE_OCCLUSION_MASK_COLOR: "Mask color",
+    IMAGE_OCCLUSION_MASK_COLOR_DESC: "The color used to mask occluded regions",
+    IMAGE_OCCLUSION_DEFAULT_MODE: "Default occlusion mode",
+    IMAGE_OCCLUSION_DEFAULT_MODE_DESC: "The default mode when creating new image occlusion cards",
+    IMAGE_OCCLUSION_HIDE_ALL_REVEAL_ONE: "Hide All, Reveal One",
+    IMAGE_OCCLUSION_STAGED_REVEAL: "Staged Reveal",
+    IMAGE_OCCLUSION_REVEAL_NEXT: "Reveal Next",
+    IMAGE_OCCLUSION_NAME: "Name",
+    IMAGE_OCCLUSION_NAME_PLACEHOLDER: "e.g. Squeeze theorem, Subset definition...",
 };

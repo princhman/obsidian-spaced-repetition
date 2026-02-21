@@ -152,6 +152,10 @@ export class SrsAlgorithmOsr implements ISrsAlgorithm {
         return new RepItemScheduleInfoOsr(globalDateProvider.today, temp.interval, temp.ease);
     }
 
+    isResetAsReview(): boolean {
+        return false;
+    }
+
     cardGetResetSchedule(): RepItemScheduleInfo {
         const interval = SrsAlgorithmOsr.initialInterval;
         const ease = this.settings.baseEase;

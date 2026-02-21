@@ -55,7 +55,8 @@
         "gridjs": "^6.2.0",
         "minimatch": "^10.1.1",
         "pagerank.js": "^1.0.2",
-        "short-uuid": "^5.2.0"
+        "short-uuid": "^5.2.0",
+        "ts-fsrs": "^5.2.3"
     },
     "pre-commit": [
         "precommit-msg",
