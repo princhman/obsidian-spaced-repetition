@@ -1,3 +1,4 @@
+import { Menu, Notice } from "obsidian";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import h from "vhtml";
 
@@ -223,6 +224,21 @@ export class DeckUI {
             this.startReviewOfDeck(deck);
         });
 
+        // Context menu for ignoring folders
+        deckTreeSelf.addEventListener("contextmenu", (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = new Menu();
+            menu.addItem((item) => {
+                item.setTitle(t("IGNORE_THIS_FOLDER"))
+                    .setIcon("folder-minus")
+                    .onClick(async () => {
+                        await this._addToIgnoredPaths(deckPath, deckTree);
+                    });
+            });
+            menu.showAtPosition({ x: event.pageX, y: event.pageY });
+        });
+
         for (const subdeck of deck.subdecks) {
             this._createTree(subdeck, deckTreeChildren);
         }
@@ -289,6 +305,21 @@ export class DeckUI {
             this.startReviewOfDeck(deck, noteInfo.path);
         });
 
+        // Context menu for ignoring files
+        noteTreeSelf.addEventListener("contextmenu", (event: MouseEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const menu = new Menu();
+            menu.addItem((item) => {
+                item.setTitle(t("IGNORE_THIS_FILE"))
+                    .setIcon("file-minus")
+                    .onClick(async () => {
+                        await this._addToIgnoredPaths(noteInfo.path, noteTree);
+                    });
+            });
+            menu.showAtPosition({ x: event.pageX, y: event.pageY });
+        });
+
         const noteTreeInner: HTMLElement = noteTreeSelf.createDiv("tree-item-inner");
         const noteTreeInnerText: HTMLElement = noteTreeInner.createDiv("tag-pane-tag-text");
         noteTreeInnerText.innerHTML += (
@@ -324,6 +355,17 @@ export class DeckUI {
             "sr-bg-red",
             statsWrapper,
         );
+    }
+
+    private async _addToIgnoredPaths(path: string, element: HTMLElement): Promise<void> {
+        const settings = this.plugin.data.settings;
+        if (!settings.noteFoldersToIgnore.includes(path)) {
+            settings.noteFoldersToIgnore.push(path);
+            await this.plugin.savePluginData();
+            element.remove();
+            new Notice(t("IGNORED_PATH_ADDED").replace("${path}", path));
+            await this.plugin.sync();
+        }
     }
 
     private _createStatsContainer(

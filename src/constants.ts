@@ -50,4 +50,7 @@ export const MULTI_SCHEDULING_EXTRACTOR_FSRS =
 // Mnemo code block format for FSRS scheduling
 export const MNEMO_BLOCK_REGEX = /```mnemo\n([\s\S]*?)```/gm;
 
+// Mnemo-ignore code block for suspended cards
+export const MNEMO_IGNORE_BLOCK_REGEX = /```mnemo-ignore\n([\s\S]*?)```/;
+
 export const SR_TAB_VIEW = "spaced-repetition-tab-view";

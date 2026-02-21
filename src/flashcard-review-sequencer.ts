@@ -7,11 +7,13 @@ import { DataStore } from "src/data-stores/base/data-store";
 import { CardListType, Deck } from "src/deck";
 import { IDeckTreeIterator } from "src/deck-tree-iterator";
 import { DueDateHistogram } from "src/due-date-histogram";
+import { addToMnemoIgnoreBlock, MnemoIgnoreEntry } from "src/mnemo-block";
 import { Note } from "src/note";
 import { Question, QuestionText } from "src/question";
 import { IQuestionPostponementList } from "src/question-postponement-list";
 import { SRSettings } from "src/settings";
 import { TopicPath } from "src/topic-path";
+import { generateBlockId } from "src/utils/block-id";
 import { globalDateProvider } from "src/utils/dates";
 
 export interface IFlashcardReviewSequencer {
@@ -276,9 +278,34 @@ export class FlashcardReviewSequencer implements IFlashcardReviewSequencer {
     }
 
     async disableCurrentCard(): Promise<void> {
-        // Add the edit-later tag to the question text so it won't appear in future reviews
-        const currentText = this.currentQuestion.questionText.actualQuestion;
-        await this.updateCurrentQuestionText(currentText + " " + this.settings.editLaterTag);
+        const question = this.currentQuestion;
+        const noteFile = question.note.file;
+        let noteText = await noteFile.read();
+
+        // Ensure the question has a block ID (generate one if missing)
+        let blockId = question.questionText.obsidianBlockId;
+        if (!blockId) {
+            blockId = generateBlockId(noteText);
+            // Write the block ID onto the question line in the file
+            const originalText = question.questionText.original;
+            const questionLine = question.questionText.actualQuestion;
+            // Insert block ID at the end of the first line of the question
+            const firstLine = questionLine.split("\n")[0];
+            const updatedOriginal = originalText.replace(firstLine, firstLine + " " + blockId);
+            noteText = noteText.replace(originalText, updatedOriginal);
+            question.questionText.obsidianBlockId = blockId;
+        }
+
+        // Add entry to mnemo-ignore block
+        const firstLine = question.questionText.actualQuestion.split("\n")[0];
+        const entry: MnemoIgnoreEntry = {
+            blockId,
+            readableText: firstLine,
+        };
+        noteText = addToMnemoIgnoreBlock(noteText, entry);
+
+        // Write the updated note
+        await noteFile.write(noteText);
 
         // Remove the card from the current review session
         this.cardSequencer.deleteCurrentQuestionFromAllDecks();
