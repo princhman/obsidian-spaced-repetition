@@ -47,4 +47,7 @@ export const SR_HTML_COMMENT_END = "-->";
 export const MULTI_SCHEDULING_EXTRACTOR_FSRS =
     /!([\d-]+),([\d.]+),([\d.]+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([\d-]+)/gm;
 
+// Mnemo code block format for FSRS scheduling
+export const MNEMO_BLOCK_REGEX = /```mnemo\n([\s\S]*?)```/gm;
+
 export const SR_TAB_VIEW = "spaced-repetition-tab-view";

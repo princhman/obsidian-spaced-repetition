@@ -14,6 +14,7 @@ import {
 } from "src/constants";
 import { IDataStore } from "src/data-stores/base/data-store";
 import { RepItemStorageInfo } from "src/data-stores/base/rep-item-storage-info";
+import { extractMnemoBlockFromText, MnemoCardData, parseMnemoBlock } from "src/mnemo-block";
 import { Question } from "src/question";
 import { SRSettings } from "src/settings";
 import { DateUtil, formatDateYYYYMMDD, globalDateProvider } from "src/utils/dates";
@@ -34,6 +35,13 @@ export class StoreInNotes implements IDataStore {
 
         // Try FSRS format first if FSRS is active
         if (isFsrs) {
+            // Try mnemo block (new format)
+            const mnemoContent = extractMnemoBlockFromText(originalQuestionText);
+            if (mnemoContent) {
+                return this.parseMnemoScheduling(mnemoContent);
+            }
+
+            // Try legacy FSRS HTML comment format
             const fsrsScheduling: RegExpMatchArray[] = [
                 ...originalQuestionText.matchAll(MULTI_SCHEDULING_EXTRACTOR_FSRS),
             ];
@@ -136,8 +144,45 @@ export class StoreInNotes implements IDataStore {
         return result;
     }
 
+    private parseMnemoScheduling(mnemoContent: string): RepItemScheduleInfo[] {
+        const cards = parseMnemoBlock(mnemoContent);
+        if (!cards) return [];
+
+        return cards.map((card: MnemoCardData) => {
+            if (card.isNew || !card.due) return null;
+
+            const dueDate: Moment = DateUtil.dateStrToMoment(card.due);
+            if (
+                dueDate == null ||
+                formatDateYYYYMMDD(dueDate) == RepItemScheduleInfoFsrs.dummyDueDateForNewCard
+            ) {
+                return null;
+            }
+
+            const delayBeforeReviewTicks: number =
+                dueDate.valueOf() - globalDateProvider.today.valueOf();
+            const lastReviewStr = card.last || RepItemScheduleInfoFsrs.dummyDueDateForNewCard;
+
+            return RepItemScheduleInfoFsrs.fromDueDateStr(
+                card.due,
+                card.s ?? 0,
+                card.d ?? 0,
+                (card.state ?? 0) as State,
+                0, // elapsedDays - derived at review time
+                0, // scheduledDays - derived from due and last
+                card.reps ?? 0,
+                card.lapses ?? 0,
+                card.steps ?? 0,
+                lastReviewStr,
+                delayBeforeReviewTicks,
+            );
+        });
+    }
+
     questionRemoveScheduleInfo(questionText: string): string {
-        return questionText.replace(/<!--SR(?:-FSRS)?:.+-->/gm, "");
+        let result = questionText.replace(/<!--SR(?:-FSRS)?:.+-->/gm, "");
+        result = result.replace(/\n?```mnemo\n[\s\S]*?```/gm, "");
+        return result;
     }
 
     async questionWriteSchedule(question: Question): Promise<void> {

@@ -1516,9 +1516,9 @@ Q2::A2`;
         expect(cardQ1.scheduleInfo).not.toBeNull();
         expect(cardQ1.scheduleInfo.dueDate).toBeDefined();
 
-        // The file should have been updated with FSRS schedule comment
+        // The file should have been updated with FSRS mnemo block
         const fileContent = await c.file.read();
-        expect(fileContent).toContain("<!--SR-FSRS:");
+        expect(fileContent).toContain("```mnemo");
 
         // Next card should be Q2 (Again moves Q1 to end, then Q2 is next)
         // or Q1 again if it was moved to end. Either way, there should be a current card.

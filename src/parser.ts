@@ -156,9 +156,21 @@ export function parse(text: string, options: ParserOptions): ParsedQuestionInfo[
             firstLineNo = i;
 
             // Pick up scheduling information if present
-            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR:")) {
+            if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR")) {
                 cardText += "\n" + lines[i + 1];
                 i++;
+            } else if (i + 1 < lines.length && lines[i + 1].trim() === "```mnemo") {
+                // Pick up mnemo scheduling block
+                i++;
+                cardText += "\n" + lines[i];
+                while (i + 1 < lines.length && !lines[i + 1].trim().startsWith("```")) {
+                    i++;
+                    cardText += "\n" + lines[i];
+                }
+                if (i + 1 < lines.length) {
+                    i++;
+                    cardText += "\n" + lines[i]; // closing ```
+                }
             }
 
             lastLineNo = i;
@@ -195,6 +207,18 @@ export function parse(text: string, options: ParserOptions): ParsedQuestionInfo[
             if (i + 1 < lines.length && lines[i + 1].startsWith("<!--SR")) {
                 occlusionText += "\n" + lines[i + 1];
                 i++;
+            } else if (i + 1 < lines.length && lines[i + 1].trim() === "```mnemo") {
+                // Pick up mnemo scheduling block
+                i++;
+                occlusionText += "\n" + lines[i];
+                while (i + 1 < lines.length && !lines[i + 1].trim().startsWith("```")) {
+                    i++;
+                    occlusionText += "\n" + lines[i];
+                }
+                if (i + 1 < lines.length) {
+                    i++;
+                    occlusionText += "\n" + lines[i]; // closing ```
+                }
             }
 
             cards.push(

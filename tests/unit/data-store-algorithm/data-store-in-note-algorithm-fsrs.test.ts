@@ -402,8 +402,8 @@ A note with extra frontmatter
     });
 });
 
-describe("questionFormatScheduleAsHtmlComment", () => {
-    test("Formats single card with schedule", () => {
+describe("questionFormatSchedule", () => {
+    test("Formats single card with schedule as mnemo block", () => {
         const settings: SRSettings = { ...DEFAULT_SETTINGS };
         const instance = new DataStoreInNoteAlgorithmFsrs(settings);
 
@@ -423,9 +423,18 @@ describe("questionFormatScheduleAsHtmlComment", () => {
         const card = new Card({ scheduleInfo });
         const question = new Question({ cards: [card] });
 
-        const result = instance.questionFormatScheduleAsHtmlComment(question);
+        const result = instance.questionFormatSchedule(question);
 
-        expect(result).toEqual("<!--SR-FSRS:!2023-09-10,5.50,3.20,2,4,10,3,1,0,2023-09-06-->");
+        expect(result).toContain("```mnemo");
+        expect(result).toContain("due: 2023-09-10");
+        expect(result).toContain("s: 5.50");
+        expect(result).toContain("d: 3.20");
+        expect(result).toContain("state: 2");
+        expect(result).toContain("reps: 3");
+        expect(result).toContain("lapses: 1");
+        expect(result).toContain("steps: 0");
+        expect(result).toContain("last: 2023-09-06");
+        expect(result).toMatch(/```$/);
     });
 
     test("Formats single card without schedule (new card)", () => {
@@ -435,9 +444,10 @@ describe("questionFormatScheduleAsHtmlComment", () => {
         const card = new Card({});
         const question = new Question({ cards: [card] });
 
-        const result = instance.questionFormatScheduleAsHtmlComment(question);
+        const result = instance.questionFormatSchedule(question);
 
-        expect(result).toEqual("<!--SR-FSRS:!2000-01-01,0.00,0.00,0,0,0,0,0,0,2000-01-01-->");
+        expect(result).toContain("```mnemo");
+        expect(result).toContain("new: true");
     });
 
     test("Formats multiple cards with mixed schedules", () => {
@@ -478,28 +488,29 @@ describe("questionFormatScheduleAsHtmlComment", () => {
 
         const question = new Question({ cards: [card1, card2, card3] });
 
-        const result = instance.questionFormatScheduleAsHtmlComment(question);
+        const result = instance.questionFormatSchedule(question);
 
-        expect(result).toEqual(
-            "<!--SR-FSRS:" +
-                "!2023-09-10,5.50,3.20,2,4,10,3,1,0,2023-09-06" +
-                "!2000-01-01,0.00,0.00,0,0,0,0,0,0,2000-01-01" +
-                "!2023-09-08,2.00,5.00,1,0,2,1,0,1,2023-09-06" +
-                "-->",
-        );
+        expect(result).toContain("[0]");
+        expect(result).toContain("[1]");
+        expect(result).toContain("[2]");
+        expect(result).toContain("due: 2023-09-10");
+        expect(result).toContain("new: true");
+        expect(result).toContain("due: 2023-09-08");
+        expect(result).toContain("s: 2.00");
+        expect(result).toContain("steps: 1");
     });
 
-    test("Uses SR-FSRS prefix instead of SR", () => {
+    test("Uses mnemo code block format", () => {
         const settings: SRSettings = { ...DEFAULT_SETTINGS };
         const instance = new DataStoreInNoteAlgorithmFsrs(settings);
 
         const card = new Card({});
         const question = new Question({ cards: [card] });
 
-        const result = instance.questionFormatScheduleAsHtmlComment(question);
+        const result = instance.questionFormatSchedule(question);
 
-        expect(result.startsWith("<!--SR-FSRS:")).toBe(true);
-        expect(result.endsWith("-->")).toBe(true);
+        expect(result.startsWith("```mnemo\n")).toBe(true);
+        expect(result.endsWith("\n```")).toBe(true);
     });
 });
 

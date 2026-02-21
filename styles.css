@@ -1478,3 +1478,29 @@ th.gridjs-th:last-child {
     font-size: 12px;
     color: var(--text-muted);
 }
+
+/* MARK: Mnemo scheduling block */
+
+.sr-mnemo-block {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--background-secondary);
+    font-size: 12px;
+}
+
+.sr-mnemo-card {
+    padding: 2px 0;
+}
+
+.sr-mnemo-label {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.sr-mnemo-due {
+    color: var(--text-normal);
+}
+
+.sr-mnemo-state {
+    color: var(--text-muted);
+}

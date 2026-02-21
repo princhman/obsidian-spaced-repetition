@@ -5,5 +5,5 @@ import { Question } from "src/question";
 export interface IDataStoreAlgorithm {
     noteGetSchedule(note: ISRFile): Promise<RepItemScheduleInfo>;
     noteSetSchedule(note: ISRFile, scheduleInfo: RepItemScheduleInfo): Promise<void>;
-    questionFormatScheduleAsHtmlComment(question: Question): string;
+    questionFormatSchedule(question: Question): string;
 }

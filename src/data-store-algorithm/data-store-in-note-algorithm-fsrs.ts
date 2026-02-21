@@ -4,14 +4,10 @@ import { State } from "ts-fsrs";
 import { RepItemScheduleInfo } from "src/algorithms/base/rep-item-schedule-info";
 import { RepItemScheduleInfoFsrs } from "src/algorithms/fsrs/rep-item-schedule-info-fsrs";
 import { Card } from "src/card";
-import {
-    ALLOWED_DATE_FORMATS,
-    SR_FSRS_HTML_COMMENT_BEGIN,
-    SR_HTML_COMMENT_END,
-    YAML_FRONT_MATTER_REGEX,
-} from "src/constants";
+import { ALLOWED_DATE_FORMATS, YAML_FRONT_MATTER_REGEX } from "src/constants";
 import { IDataStoreAlgorithm } from "src/data-store-algorithm/idata-store-algorithm";
 import { ISRFile } from "src/file";
+import { MnemoCardData, serializeMnemoCodeBlock } from "src/mnemo-block";
 import { Question } from "src/question";
 import { SRSettings } from "src/settings";
 import { formatDateYYYYMMDD } from "src/utils/dates";
@@ -114,24 +110,29 @@ export class DataStoreInNoteAlgorithmFsrs implements IDataStoreAlgorithm {
         await note.write(fileText);
     }
 
-    questionFormatScheduleAsHtmlComment(question: Question): string {
-        let result: string = SR_FSRS_HTML_COMMENT_BEGIN;
-
-        for (let i = 0; i < question.cards.length; i++) {
-            const card: Card = question.cards[i];
-            result += this.formatCardSchedule(card);
-        }
-        result += SR_HTML_COMMENT_END;
-        return result;
-    }
-
-    private formatCardSchedule(card: Card): string {
-        if (card.hasSchedule) {
-            const schedule = card.scheduleInfo as RepItemScheduleInfoFsrs;
-            return schedule.formatCardScheduleForHtmlComment();
-        } else {
-            const dummy = RepItemScheduleInfoFsrs.getDummyScheduleForNewCard(this.settings);
-            return dummy.formatCardScheduleForHtmlComment();
-        }
+    questionFormatSchedule(question: Question): string {
+        const cardDataList: MnemoCardData[] = question.cards.map((card: Card) => {
+            if (card.hasSchedule) {
+                const schedule = card.scheduleInfo as RepItemScheduleInfoFsrs;
+                return {
+                    isNew: false,
+                    due: schedule.dueDate
+                        ? formatDateYYYYMMDD(schedule.dueDate)
+                        : RepItemScheduleInfoFsrs.dummyDueDateForNewCard,
+                    s: schedule.stability,
+                    d: schedule.difficulty,
+                    state: schedule.state as number,
+                    reps: schedule.reps,
+                    lapses: schedule.lapses,
+                    steps: schedule.learningSteps,
+                    last: schedule.lastReview
+                        ? formatDateYYYYMMDD(schedule.lastReview)
+                        : RepItemScheduleInfoFsrs.dummyDueDateForNewCard,
+                };
+            } else {
+                return { isNew: true };
+            }
+        });
+        return serializeMnemoCodeBlock(cardDataList);
     }
 }

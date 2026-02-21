@@ -80,7 +80,7 @@ export class DataStoreInNoteAlgorithmOsr implements IDataStoreAlgorithm {
         await note.write(fileText);
     }
 
-    questionFormatScheduleAsHtmlComment(question: Question): string {
+    questionFormatSchedule(question: Question): string {
         let result: string = SR_HTML_COMMENT_BEGIN;
 
         for (let i = 0; i < question.cards.length; i++) {

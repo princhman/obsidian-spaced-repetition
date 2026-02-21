@@ -41,6 +41,7 @@ import {
     serializeOcclusionCodeBlock,
 } from "src/image-occlusion";
 import { t } from "src/lang/helpers";
+import { parseMnemoBlock } from "src/mnemo-block";
 import { NextNoteReviewHandler } from "src/next-note-review-handler";
 import { Note } from "src/note";
 import { NoteFileLoader } from "src/note-file-loader";
@@ -129,6 +130,7 @@ export default class SRPlugin extends Plugin {
         this.registerSRFocusListener();
 
         this._registerOcclusionCodeBlockProcessor();
+        this._registerMnemoCodeBlockProcessor();
     }
 
     private _registerOcclusionCodeBlockProcessor(): void {
@@ -213,6 +215,38 @@ export default class SRPlugin extends Plugin {
                     toggle.setText("\u25B6"); // right-pointing triangle
                 }
             });
+        });
+    }
+
+    private _registerMnemoCodeBlockProcessor(): void {
+        this.registerMarkdownCodeBlockProcessor("mnemo", (source, el) => {
+            const cards = parseMnemoBlock(source);
+            if (!cards || cards.length === 0) {
+                el.createEl("code", { text: source });
+                return;
+            }
+
+            const container = el.createDiv({ cls: "sr-mnemo-block" });
+            const stateNames = ["New", "Learning", "Review", "Relearning"];
+
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                if (card.isNew) continue;
+
+                const row = container.createDiv({ cls: "sr-mnemo-card" });
+                if (cards.length > 1) {
+                    row.createSpan({ text: `C${i}: `, cls: "sr-mnemo-label" });
+                }
+                row.createSpan({
+                    text: `Due ${card.due}`,
+                    cls: "sr-mnemo-due",
+                });
+                const stateLabel = stateNames[card.state ?? 0] || `State ${card.state}`;
+                row.createSpan({
+                    text: ` \u00B7 ${stateLabel}`,
+                    cls: "sr-mnemo-state",
+                });
+            }
         });
     }
 

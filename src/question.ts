@@ -228,14 +228,23 @@ export class Question {
         const hasSchedule: boolean = this.cards.some((card) => card.hasSchedule);
         if (hasSchedule) {
             result = result.trimEnd();
-            const scheduleHtml =
-                DataStoreAlgorithm.getInstance().questionFormatScheduleAsHtmlComment(this);
-            if (blockId) {
-                if (this.isCardCommentsOnSameLine(settings))
-                    result += ` ${scheduleHtml} ${blockId}`;
-                else result += ` ${blockId}\n${scheduleHtml}`;
+            const schedule =
+                DataStoreAlgorithm.getInstance().questionFormatSchedule(this);
+            const isCodeBlock = schedule.startsWith("```");
+
+            if (isCodeBlock) {
+                // Mnemo code block: block ID on question line, code block on new line
+                if (blockId) result += ` ${blockId}`;
+                result += "\n" + schedule;
             } else {
-                result += this.getHtmlCommentSeparator(settings) + scheduleHtml;
+                // HTML comment (SM-2): existing inline behavior
+                if (blockId) {
+                    if (this.isCardCommentsOnSameLine(settings))
+                        result += ` ${schedule} ${blockId}`;
+                    else result += ` ${blockId}\n${schedule}`;
+                } else {
+                    result += this.getHtmlCommentSeparator(settings) + schedule;
+                }
             }
         } else {
             // No schedule, so the block ID always comes after the question text, without anything after it
